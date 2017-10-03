@@ -3,24 +3,22 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 class CharNN(nn.Module):
-  def __init__(self, nlayers, input_size, hidden_size):
+  def __init__(self, nlayers, input_size, hidden_size, batch_size):
     super(CharNN, self).__init__()
     self.input_size = input_size
     self.hidden_size = hidden_size
     self.nlayers = nlayers
-    # set batch size to 1 to use a common initial hidden state
-    batch_size = 1
 
-    self.embed = nn.Embedding(input_size, hidden_size)
-    self.h0 = Variable(torch.randn(nlayers, batch_size, hidden_size),
-        requires_grad = True)
-    self.c0 = Variable(torch.randn(nlayers, batch_size, hidden_size),
-        requires_grad = True)
+    self.embed = nn.Embedding(input_size, hidden_size).cuda()
+    self.h0 = Variable(torch.zeros(nlayers, batch_size, hidden_size).cuda())
+    self.c0 = Variable(torch.zeros(nlayers, batch_size, hidden_size).cuda())
+    # self.h0 = torch.zeros(nlayers, batch_size, hidden_size).cuda()
+    # self.c0 = torch.zeros(nlayers, batch_size, hidden_size).cuda()
     self.rnn = nn.LSTM(input_size = self.hidden_size,
         hidden_size = self.hidden_size,
-        num_layers = self.nlayers)
-    self.fc = nn.Linear(hidden_size, input_size)
-    self.log_softmax = nn.LogSoftmax()
+        num_layers = self.nlayers).cuda()
+    self.fc = nn.Linear(hidden_size, input_size).cuda()
+    self.log_softmax = nn.LogSoftmax().cuda()
 
   def forward(self, xin, h):
     """
