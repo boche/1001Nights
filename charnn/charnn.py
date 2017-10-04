@@ -22,16 +22,26 @@ def load_file(filename):
 
 def sample():
   #TODO: replace with beam search
-  ix = random.randint(0, input_size-1)
-  line = ""
-  line += ix2ch[ix]
-  h = None
-  for i in range(100):
-    prob, h = model(Variable(torch.LongTensor([[ix]])), h)
-    prob = np.exp(prob.cpu().data.numpy().ravel())
-    ix = np.random.choice(input_size, p = prob)
+  ans = ""
+  max_prob = 0.0
+
+  for i in range(10):
+    ix = random.randint(0, input_size-1)
+    line = ""
     line += ix2ch[ix]
-  return line
+    h = None
+    sum_prob = 0.0
+    for i in range(100):
+      prob, h = model(Variable(torch.LongTensor([[ix]])), h)
+      prob = np.exp(prob.cpu().data.numpy().ravel())
+      ix = np.random.choice(input_size, p = prob)
+      sum_prob += prob[ix]
+      line += ix2ch[ix]
+
+    if sum_prob > max_prob:
+      max_prob = sum_prob
+      ans = line
+  return ans
 
 def random_sample():
   samples = torch.LongTensor(args.batch_size, args.chunk_len)
