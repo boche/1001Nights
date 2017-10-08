@@ -4,10 +4,12 @@ import numpy as np
 import gensim
 import time
 import pickle
-import torch
 from MyReader import MyReader
 from tokens import *
-from model.EncoderRNN import EncoderRNN
+import torch
+import torch.nn as nn
+from torch.autograd import Variable
+from model import EncoderRNN, DecoderRNN
 
 
 def pad_seq(seq, max_length):
@@ -17,10 +19,12 @@ def pad_seq(seq, max_length):
 def read_batch(word2idx):
     targets = []
     inputs = []
+    epoch_end = False
     while len(targets) < args.batch_size:
         # if at the end, return (None, None, None)
         docid, head, body = next(docs, (None, None, None))
         if docid is None:
+            epoch_end = True
             break
         # only append non empty data
         if len(head) > 0 and len(body) > 0:
@@ -39,7 +43,7 @@ def read_batch(word2idx):
     inputs = [pad_seq(x, max(input_lens)) for x in inputs]
     target_lens = [len(y) for y in targets]
     targets = [pad_seq(y, max(target_lens)) for y in targets]
-    return inputs, targets, input_lens, target_lens
+    return inputs, targets, input_lens, target_lens, epoch_end
 
 def build_vocab():
     print("build vocab")
@@ -81,15 +85,58 @@ def get_vocab_idx():
         word2idx[word] = len(word2idx)
     return word2idx, idx2word
 
+def mask_loss(logp, target_lens, targets):
+    """
+    logp: list of torch tensors, seq x batch x dim
+    target_lens: list of target lens
+    targets: batch x seq
+    """
+    logp = torch.stack(logp).transpose(0, 1) # b x s x d
+    loss = 0
+    for i in range(len(target_lens)):
+        # the first one is SOS, so should skip
+        idx = Variable(torch.LongTensor(targets[i][1:target_lens[i]]).view(-1, 1))
+        logp_i = logp[i, :target_lens[i]-1, :]
+        loss +=  torch.gather(logp_i, 1, idx).sum()
+    return -loss
+
+def save_model(model, name):
+    torch.save(model, args.save_dir + name)
+
 def test():
-    encoder = EncoderRNN(len(word2idx), args.emb_size, args.hidden_size, 2)
-    inputs, targets, input_lens, target_lens = read_batch(word2idx)
-    output, hidden = encoder(torch.LongTensor(inputs), input_lens)
+    encoder = EncoderRNN.EncoderRNN(len(word2idx), args.emb_size,
+            args.hidden_size, args.nlayers)
+    decoder = DecoderRNN.DecoderRNN(len(word2idx), args.hidden_size,
+            args.nlayers, encoder.emb, 0.5)
+    print(encoder)
+    print(decoder)
+    encoder_opt = torch.optim.Adam(encoder.parameters(), lr=args.learning_rate)
+    decoder_opt = torch.optim.Adam(decoder.parameters(), lr=args.learning_rate)
+
+    for ep in range(args.nepochs):
+        epoch_end = False
+        epoch_loss = 0
+        reader.reset()
+        while not epoch_end:
+            inputs, targets, input_lens, target_lens, epoch_end = read_batch(
+                    word2idx)
+            encoder_output, encoder_hidden = encoder(torch.LongTensor(inputs), input_lens)
+            logp = decoder(torch.LongTensor(targets), encoder_hidden)
+            loss = mask_loss(logp, target_lens, targets)
+            encoder.zero_grad()
+            decoder.zero_grad()
+            loss.backward()
+            encoder_opt.step()
+            decoder_opt.step()
+            epoch_loss += loss.data[0]
+            print(loss.data[0])
+    torch.save(encoder, args.save_dir + "encoder.md")
+    torch.save(decoder, args.save_dir + "decoder.md")
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--dataset', type=str, default=
-            "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_2010*")
+            "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_201012")
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/bchen2/1001Nights/")
     argparser.add_argument('--emb_bin_dir', type=str, default=
@@ -101,8 +148,11 @@ if __name__ == "__main__":
     argparser.add_argument('--batch_size', type=int, default=8)
     argparser.add_argument('--vocab_size', type=int, default=50000)
     argparser.add_argument('--hidden_size', type=int, default=10)
+    argparser.add_argument('--nlayers', type=int, default=2)
+    argparser.add_argument('--nepochs', type=int, default=2)
     argparser.add_argument('--emb_size', type=int, default=80)
     argparser.add_argument('--max_text_len', type=int, default=1000)
+    argparser.add_argument('--learning_rate', type=float, default=0.001)
 
     args = argparser.parse_args()
     reader = MyReader(args.dataset + "*")
