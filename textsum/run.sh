@@ -24,4 +24,5 @@
 #echo "Running on gpu"
 #echo "Device = $CUDA_VISIBLE_DEVICES"
 #python main.py --build_vocab
-python main.py --build_emb
+#python main.py --build_emb
+python main.py

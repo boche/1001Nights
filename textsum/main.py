@@ -4,21 +4,45 @@ import numpy as np
 import gensim
 import time
 import pickle
+import torch
 from MyReader import MyReader
+from model.EncoderRNN import EncoderRNN
 
-def read_batch():
-    data = []
-    while len(data) < args.batch_size:
+def read_batch(word2idx):
+    titles = []
+    contexts = []
+    while len(titles) < args.batch_size:
         # if at the end, return (None, None, None)
         docid, head, body = next(docs, (None, None, None))
         if docid is None:
             break
         # only append non empty data
         if len(head) > 0 and len(body) > 0:
-            data.append((head, body))
-    return data
+            head.insert(0, "<SOS>")
+            head.append("<EOS>")
+            titles.append([word2idx[w.lower()] if w.lower() in word2idx
+                else word2idx["<UNK>"] for w in head])
+            contexts.append([word2idx[w.lower()] if w.lower() in word2idx
+                else word2idx["<UNK>"] for w in body[:args.max_text_len]])
+
+    # sort by contexts length, create a padded sequence
+    input_lens = []
+    batch_size = len(contexts)
+    for context in contexts:
+        input_lens.append(len(context))
+    idx_sorted = sorted(range(batch_size), key=lambda x: input_lens[x],
+            reverse = True)
+    input_lens = [input_lens[idx] for idx in idx_sorted]
+    titles = [titles[idx] for idx in idx_sorted]
+    contexts = [contexts[idx] for idx in idx_sorted]
+    max_seq_len = len(contexts[0])
+    pad_contexts = [[0 for i in range(max_seq_len)] for j in range(batch_size)]
+    for i in range(batch_size):
+        pad_contexts[i][:len(contexts[i])] = contexts[i]
+    return titles, pad_contexts, input_lens
 
 def build_vocab():
+    print("build vocab")
     vocab = {}
     for docid, head, body in docs:
         print(docid, len(vocab))
@@ -32,6 +56,7 @@ def build_vocab():
     pickle.dump(vocab, open(args.save_path + args.vocab_dir, "wb"))
 
 def build_emb():
+    print("build emb")
     vocab_idx = {}
     vocab_cnt = pickle.load(open(args.save_path + args.vocab_dir, "rb"))
     pretrained_emb = gensim.models.KeyedVectors.load_word2vec_format(
@@ -43,6 +68,27 @@ def build_emb():
             emb.append(pretrained_emb[word])
     emb = np.asarray(emb)
     pickle.dump((emb, vocab_idx), open(args.save_path + args.emb_pkl_dir, "wb"))
+
+def get_vocab_idx():
+    import operator
+    word_cnt = pickle.load(open(args.save_path + args.vocab_dir, "rb"))
+    word_cnt = sorted(word_cnt.items(), key=operator.itemgetter(1),
+            reverse = True)
+    word_cnt = word_cnt[:args.vocab_size]
+    word2idx = {}
+    idx2word = []
+    for word, _ in word_cnt:
+        idx2word.append(word)
+        word2idx[word] = len(word2idx)
+    for word in ["<SOS>", "<EOS>", "<UNK>"]:
+        idx2word.append(word)
+        word2idx[word] = len(word2idx)
+    return word2idx, idx2word
+
+def test():
+    encoder = EncoderRNN(len(word2idx), args.emb_size, args.hidden_size, 2)
+    titles, pad_contexts, input_lens = read_batch(word2idx)
+    output, hidden = encoder(torch.LongTensor(pad_contexts), input_lens)
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
@@ -56,14 +102,19 @@ if __name__ == "__main__":
     argparser.add_argument('--emb_pkl_dir', type = str, default="emb2010.pkl")
     argparser.add_argument('--build_vocab', action='store_true')
     argparser.add_argument('--build_emb', action='store_true')
-    argparser.add_argument('--batch_size', type=int, default=100)
-    
+    argparser.add_argument('--batch_size', type=int, default=8)
+    argparser.add_argument('--vocab_size', type=int, default=50000)
+    argparser.add_argument('--hidden_size', type=int, default=10)
+    argparser.add_argument('--emb_size', type=int, default=80)
+    argparser.add_argument('--max_text_len', type=int, default=1000)
+
     args = argparser.parse_args()
     reader = MyReader(args.dataset + "*")
     docs = reader.gen_docs()
     if args.build_vocab:
-        print("build vocab")
         build_vocab()
     elif args.build_emb:
-        print("build emb")
         build_emb()
+    else:
+        word2idx, idx2word = get_vocab_idx()
+        test()
