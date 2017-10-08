@@ -6,40 +6,40 @@ import time
 import pickle
 import torch
 from MyReader import MyReader
+from tokens import *
 from model.EncoderRNN import EncoderRNN
 
+
+def pad_seq(seq, max_length):
+    seq += [0 for i in range(max_length - len(seq))]
+    return seq
+
 def read_batch(word2idx):
-    titles = []
-    contexts = []
-    while len(titles) < args.batch_size:
+    targets = []
+    inputs = []
+    while len(targets) < args.batch_size:
         # if at the end, return (None, None, None)
         docid, head, body = next(docs, (None, None, None))
         if docid is None:
             break
         # only append non empty data
         if len(head) > 0 and len(body) > 0:
-            head.insert(0, "<SOS>")
-            head.append("<EOS>")
-            titles.append([word2idx[w.lower()] if w.lower() in word2idx
-                else word2idx["<UNK>"] for w in head])
-            contexts.append([word2idx[w.lower()] if w.lower() in word2idx
-                else word2idx["<UNK>"] for w in body[:args.max_text_len]])
+            head.insert(0, SOS)
+            head.append(EOS)
+            targets.append([word2idx[w] if w in word2idx else word2idx[UNK]
+                for w in head])
+            inputs.append([word2idx[w] if w in word2idx else word2idx[UNK]
+                for w in body[:args.max_text_len]])
 
-    # sort by contexts length, create a padded sequence
-    input_lens = []
-    batch_size = len(contexts)
-    for context in contexts:
-        input_lens.append(len(context))
-    idx_sorted = sorted(range(batch_size), key=lambda x: input_lens[x],
+    # sort by input length, create a padded sequence
+    seq_pairs = sorted(zip(inputs, targets), key = lambda p: len(p[0]),
             reverse = True)
-    input_lens = [input_lens[idx] for idx in idx_sorted]
-    titles = [titles[idx] for idx in idx_sorted]
-    contexts = [contexts[idx] for idx in idx_sorted]
-    max_seq_len = len(contexts[0])
-    pad_contexts = [[0 for i in range(max_seq_len)] for j in range(batch_size)]
-    for i in range(batch_size):
-        pad_contexts[i][:len(contexts[i])] = contexts[i]
-    return titles, pad_contexts, input_lens
+    inputs, targets = zip(*seq_pairs)
+    input_lens = [len(x) for x in inputs]
+    inputs = [pad_seq(x, max(input_lens)) for x in inputs]
+    target_lens = [len(y) for y in targets]
+    targets = [pad_seq(y, max(target_lens)) for y in targets]
+    return inputs, targets, input_lens, target_lens
 
 def build_vocab():
     print("build vocab")
@@ -48,10 +48,8 @@ def build_vocab():
         print(docid, len(vocab))
         if len(head) > 0 and len(body) > 0:
             for w in head:
-                w = w.lower()
                 vocab[w] = vocab.get(w, 0) + 1
             for w in body:
-                w = w.lower()
                 vocab[w] = vocab.get(w, 0) + 1
     pickle.dump(vocab, open(args.save_path + args.vocab_dir, "wb"))
 
@@ -70,25 +68,23 @@ def build_emb():
     pickle.dump((emb, vocab_idx), open(args.save_path + args.emb_pkl_dir, "wb"))
 
 def get_vocab_idx():
-    import operator
     word_cnt = pickle.load(open(args.save_path + args.vocab_dir, "rb"))
-    word_cnt = sorted(word_cnt.items(), key=operator.itemgetter(1),
-            reverse = True)
+    word_cnt = sorted(word_cnt.items(), key= lambda x: x[1], reverse = True)
     word_cnt = word_cnt[:args.vocab_size]
     word2idx = {}
     idx2word = []
-    for word, _ in word_cnt:
+    for word in [SOS, EOS, UNK]:
         idx2word.append(word)
         word2idx[word] = len(word2idx)
-    for word in ["<SOS>", "<EOS>", "<UNK>"]:
+    for word, _ in word_cnt:
         idx2word.append(word)
         word2idx[word] = len(word2idx)
     return word2idx, idx2word
 
 def test():
     encoder = EncoderRNN(len(word2idx), args.emb_size, args.hidden_size, 2)
-    titles, pad_contexts, input_lens = read_batch(word2idx)
-    output, hidden = encoder(torch.LongTensor(pad_contexts), input_lens)
+    inputs, targets, input_lens, target_lens = read_batch(word2idx)
+    output, hidden = encoder(torch.LongTensor(inputs), input_lens)
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()

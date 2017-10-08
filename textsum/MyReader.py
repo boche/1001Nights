@@ -16,7 +16,7 @@ class MyReader:
         self.f = gzip.open(self.filenames[self.fid], 'r')
         
     def textify(self, content):
-        return re.findall("([^\s)]+)\)", content)
+        return [x.lower() for x in re.findall("([^\s)]+)\)", content)]
     
     def parse_doc(self, content):
         root = ET.fromstring(content)
