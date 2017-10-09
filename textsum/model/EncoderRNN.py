@@ -3,11 +3,12 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 class EncoderRNN(nn.Module):
-    def __init__(self, vocab_size, emb_size, hidden_size, nlayers):
+    def __init__(self, vocab_size, emb, hidden_size, nlayers):
         super(EncoderRNN, self).__init__()
         self.nlayers = nlayers
         self.hidden_size = hidden_size
-        self.emb = nn.Embedding(vocab_size, emb_size)
+        self.emb = emb
+        emb_size = self.emb.weight.size(1)
         self.rnn = nn.GRU(input_size=emb_size, hidden_size = hidden_size,
                 num_layers = nlayers, batch_first = True)
 
