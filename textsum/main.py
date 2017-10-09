@@ -15,7 +15,7 @@ def pad_seq(seq, max_length):
     seq += [0 for i in range(max_length - len(seq))]
     return seq
 
-def read_batch(word2idx):
+def read_batch(word2idx, docs):
     targets = []
     inputs = []
     epoch_end = False
@@ -52,6 +52,7 @@ def read_batch(word2idx):
 def build_vocab():
     print("build vocab")
     vocab = {}
+    docs = MyReader(args.dataset + "*").gen_docs()
     for docid, head, body in docs:
         print(docid, len(vocab))
         if len(head) > 0 and len(body) > 0:
@@ -115,14 +116,14 @@ def test():
 
     for ep in range(args.nepochs):
         epoch_end = False
-        epoch_loss = 0
-        reader.reset()
+        docs = MyReader(args.dataset + "*").gen_docs()
         batch_idx = 0
+        epoch_loss = 0
         ts = time.time()
         while not epoch_end:
             batch_idx += 1
             inputs, targets, input_lens, target_lens, epoch_end = read_batch(
-                    word2idx)
+                    word2idx, docs)
             if len(targets) == 0:
                 continue
             targets = torch.LongTensor(targets).cuda()
@@ -138,8 +139,8 @@ def test():
                     batch_idx, len(targets), time.time() - ts, loss.data[0]))
                 summarize(s2s, inputs, input_lens, targets, target_lens)
                 sys.stdout.flush()
-    torch.save(encoder, args.save_dir + "encoder.md")
-    torch.save(decoder, args.save_dir + "decoder.md")
+        print("Epoch %d, loss: %.2f, #batch: %d" % (ep + 1, epoch_loss, batch_idx))
+    torch.save(s2s, args.save_dir + "ses.model")
 
 def summarize(s2s, inputs, input_lens, targets, target_lens):
     logp, list_symbols = s2s.summarize(inputs, input_lens)
@@ -171,11 +172,11 @@ if __name__ == "__main__":
     argparser.add_argument('--emb_pkl_dir', type = str, default="emb2010.pkl")
     argparser.add_argument('--build_vocab', action='store_true')
     argparser.add_argument('--build_emb', action='store_true')
-    argparser.add_argument('--batch_size', type=int, default=32)
+    argparser.add_argument('--batch_size', type=int, default=40)
     argparser.add_argument('--vocab_size', type=int, default=50000)
-    argparser.add_argument('--hidden_size', type=int, default=10)
+    argparser.add_argument('--hidden_size', type=int, default=80)
     argparser.add_argument('--nlayers', type=int, default=2)
-    argparser.add_argument('--nepochs', type=int, default=2)
+    argparser.add_argument('--nepochs', type=int, default=20)
     argparser.add_argument('--emb_size', type=int, default=80)
     argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=1000)
@@ -183,8 +184,7 @@ if __name__ == "__main__":
     argparser.add_argument('--teach_ratio', type=float, default=0.5)
 
     args = argparser.parse_args()
-    reader = MyReader(args.dataset + "*")
-    docs = reader.gen_docs()
+    print(args)
     if args.build_vocab:
         build_vocab()
     elif args.build_emb:

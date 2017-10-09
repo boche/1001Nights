@@ -7,11 +7,8 @@ import xml.etree.ElementTree as ET
 
 class MyReader:
     def __init__(self, pattern):
-        self.filenames = glob.glob(pattern)
-        self.reset()
-        
-    def reset(self):
         self.fid = 0
+        self.filenames = glob.glob(pattern)
         random.shuffle(self.filenames)
         self.f = gzip.open(self.filenames[self.fid], 'r')
         
