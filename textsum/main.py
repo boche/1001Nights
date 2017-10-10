@@ -9,14 +9,13 @@ from tokens import *
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-from model import EncoderRNN, DecoderRNN
-
+from model import Seq2Seq
 
 def pad_seq(seq, max_length):
     seq += [0 for i in range(max_length - len(seq))]
     return seq
 
-def read_batch(word2idx):
+def read_batch(word2idx, docs):
     targets = []
     inputs = []
     epoch_end = False
@@ -35,19 +34,25 @@ def read_batch(word2idx):
             inputs.append([word2idx[w] if w in word2idx else word2idx[UNK]
                 for w in body[:args.max_text_len]])
 
-    # sort by input length, create a padded sequence
-    seq_pairs = sorted(zip(inputs, targets), key = lambda p: len(p[0]),
-            reverse = True)
-    inputs, targets = zip(*seq_pairs)
-    input_lens = [len(x) for x in inputs]
-    inputs = [pad_seq(x, max(input_lens)) for x in inputs]
-    target_lens = [len(y) for y in targets]
-    targets = [pad_seq(y, max(target_lens)) for y in targets]
-    return inputs, targets, input_lens, target_lens, epoch_end
+    if len(targets) == 0:
+        # deal with the empty case separately because it will fail with
+        # zip(*seq_pairs)
+        return inputs, targets, [], [], epoch_end
+    else:
+        # sort by input length, create a padded sequence
+        seq_pairs = sorted(zip(inputs, targets), key = lambda p: len(p[0]),
+                reverse = True)
+        inputs, targets = zip(*seq_pairs)
+        input_lens = [len(x) for x in inputs]
+        inputs = [pad_seq(x, max(input_lens)) for x in inputs]
+        target_lens = [len(y) for y in targets]
+        targets = [pad_seq(y, max(target_lens)) for y in targets]
+        return inputs, targets, input_lens, target_lens, epoch_end
 
 def build_vocab():
     print("build vocab")
     vocab = {}
+    docs = MyReader(args.dataset + "*").gen_docs()
     for docid, head, body in docs:
         print(docid, len(vocab))
         if len(head) > 0 and len(body) > 0:
@@ -83,6 +88,7 @@ def get_vocab_idx():
     for word, _ in word_cnt:
         idx2word.append(word)
         word2idx[word] = len(word2idx)
+    args.vocab_size = len(word2idx)
     return word2idx, idx2word
 
 def mask_loss(logp, target_lens, targets):
@@ -94,8 +100,8 @@ def mask_loss(logp, target_lens, targets):
     logp = torch.stack(logp).transpose(0, 1) # b x s x d
     loss = 0
     for i in range(len(target_lens)):
-        # the first one is SOS, so should skip
-        idx = Variable(torch.LongTensor(targets[i][1:target_lens[i]]).view(-1, 1))
+        # the first one is SOS, so skip it
+        idx = Variable(targets[i][1:target_lens[i]].view(-1, 1))
         logp_i = logp[i, :target_lens[i]-1, :]
         loss +=  torch.gather(logp_i, 1, idx).sum()
     return -loss
@@ -104,34 +110,55 @@ def save_model(model, name):
     torch.save(model, args.save_dir + name)
 
 def test():
-    encoder = EncoderRNN.EncoderRNN(len(word2idx), args.emb_size,
-            args.hidden_size, args.nlayers)
-    decoder = DecoderRNN.DecoderRNN(len(word2idx), args.hidden_size,
-            args.nlayers, encoder.emb, 0.5)
-    print(encoder)
-    print(decoder)
-    encoder_opt = torch.optim.Adam(encoder.parameters(), lr=args.learning_rate)
-    decoder_opt = torch.optim.Adam(decoder.parameters(), lr=args.learning_rate)
+    s2s = Seq2Seq.Seq2Seq(args).cuda()
+    print(s2s)
+    s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate)
 
     for ep in range(args.nepochs):
         epoch_end = False
+        docs = MyReader(args.dataset + "*").gen_docs()
+        batch_idx = 0
         epoch_loss = 0
-        reader.reset()
+        ts = time.time()
         while not epoch_end:
+            batch_idx += 1
             inputs, targets, input_lens, target_lens, epoch_end = read_batch(
-                    word2idx)
-            encoder_output, encoder_hidden = encoder(torch.LongTensor(inputs), input_lens)
-            logp = decoder(torch.LongTensor(targets), encoder_hidden)
+                    word2idx, docs)
+            if len(targets) == 0:
+                continue
+            targets = torch.LongTensor(targets).cuda()
+            inputs = torch.LongTensor(inputs).cuda()
+            logp = s2s(inputs, input_lens, targets)
             loss = mask_loss(logp, target_lens, targets)
-            encoder.zero_grad()
-            decoder.zero_grad()
+            s2s.zero_grad()
             loss.backward()
-            encoder_opt.step()
-            decoder_opt.step()
+            s2s_opt.step()
             epoch_loss += loss.data[0]
-            print(loss.data[0])
-    torch.save(encoder, args.save_dir + "encoder.md")
-    torch.save(decoder, args.save_dir + "decoder.md")
+            if batch_idx % 10 == 0:
+                print("batch %d, size %d, time %.1f sec, loss %.2f" % (
+                    batch_idx, len(targets), time.time() - ts, loss.data[0]))
+                summarize(s2s, inputs, input_lens, targets, target_lens)
+                sys.stdout.flush()
+        print("Epoch %d, loss: %.2f, #batch: %d" % (ep + 1, epoch_loss, batch_idx))
+    torch.save(s2s, args.save_dir + "ses.model")
+
+def summarize(s2s, inputs, input_lens, targets, target_lens):
+    logp, list_symbols = s2s.summarize(inputs, input_lens)
+    list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s x d
+
+    def idxes2sent(idxes):
+        seq = ""
+        for idx in idxes:
+            seq += idx2word[idx] + " "
+            if idx2word[idx] == EOS:
+                break
+        return seq
+
+    for i in range(min(len(targets), 3)):
+        symbols = list_symbols[i]
+        print("sample:", idxes2sent(symbols.cpu().data.numpy()))
+        print("gt:", idxes2sent(targets[i].cpu().numpy()))
+        print(80 * '-')
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
@@ -145,18 +172,19 @@ if __name__ == "__main__":
     argparser.add_argument('--emb_pkl_dir', type = str, default="emb2010.pkl")
     argparser.add_argument('--build_vocab', action='store_true')
     argparser.add_argument('--build_emb', action='store_true')
-    argparser.add_argument('--batch_size', type=int, default=8)
+    argparser.add_argument('--batch_size', type=int, default=40)
     argparser.add_argument('--vocab_size', type=int, default=50000)
-    argparser.add_argument('--hidden_size', type=int, default=10)
+    argparser.add_argument('--hidden_size', type=int, default=80)
     argparser.add_argument('--nlayers', type=int, default=2)
-    argparser.add_argument('--nepochs', type=int, default=2)
+    argparser.add_argument('--nepochs', type=int, default=20)
     argparser.add_argument('--emb_size', type=int, default=80)
+    argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=1000)
     argparser.add_argument('--learning_rate', type=float, default=0.001)
+    argparser.add_argument('--teach_ratio', type=float, default=0.5)
 
     args = argparser.parse_args()
-    reader = MyReader(args.dataset + "*")
-    docs = reader.gen_docs()
+    print(args)
     if args.build_vocab:
         build_vocab()
     elif args.build_emb:
