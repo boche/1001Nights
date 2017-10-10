@@ -20,6 +20,6 @@ class EncoderRNN(nn.Module):
         xin_pack = nn.utils.rnn.pack_padded_sequence(xin_emb, input_lengths,
                 batch_first=True)
         output_pack, hidden = self.rnn(xin_pack)
-        output, output_len = nn.utils.rnn.pad_packed_sequence(output_pack,
+        output, _ = nn.utils.rnn.pad_packed_sequence(output_pack,
                 batch_first=True)
         return output, hidden

@@ -5,7 +5,7 @@
 #PBS -d .
 #PBS -V
 #PBS -l walltime=48:00:00
-#PBS -N CharNN 
+#PBS -N Seq2Seq
 #PBS -q gpu
 
 ## for XSede comet cluster ###
@@ -17,12 +17,12 @@
 #SBATCH --export=ALL
 #SBATCH --time="24:00:00"
 
-#module load gcc-4.9.2
-#module load cuda-8.0
-#export CUDA_VISIBLE_DEVICES=`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`
-#echo $HOSTNAME
-#echo "Running on gpu"
-#echo "Device = $CUDA_VISIBLE_DEVICES"
+module load gcc-4.9.2
+module load cuda-8.0
+export CUDA_VISIBLE_DEVICES=`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`
+echo $HOSTNAME
+echo "Running on gpu"
+echo "Device = $CUDA_VISIBLE_DEVICES"
 #python main.py --build_vocab
 #python main.py --build_emb
 python main.py

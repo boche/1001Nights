@@ -19,9 +19,6 @@ class DecoderRNN(nn.Module):
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, target, encoder_hidden):
-        """
-        target: batch_size, max_seq_len
-        """
         batch_size, max_seq_len = target.size()
         use_teacher_forcing = random.random() < self.teach_ratio
 
@@ -46,6 +43,7 @@ class DecoderRNN(nn.Module):
         batch_size = encoder_hidden.size(1)
 
         h = encoder_hidden
+        # here it's assuming SOS has index 0
         batch_input = Variable(torch.Tensor.long(torch.zeros(batch_size)).cuda())
         batch_output = []
         batch_symbol = [batch_input]
