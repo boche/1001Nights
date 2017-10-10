@@ -1,5 +1,6 @@
 import sys
 import argparse
+import random
 import numpy as np
 import gensim
 import time
@@ -15,23 +16,17 @@ def pad_seq(seq, max_length):
     seq += [0] * (max_length - len(seq))
     return seq
 
-def read_batch(word2idx, docs):
+def next_batch(batch_idx, data):
     targets, inputs = [], []
-    epoch_end = False
-    while len(targets) < args.batch_size:
-        # if at the end, return (None, None, None)
-        docid, head, body = next(docs, (None, None, None))
-        if docid is None:
-            epoch_end = True
-            break
-        if len(head) > 0 and len(body) > 0:
-            head.insert(0, SOS)
-            head.append(EOS)
-            targets.append([word2idx[w] if w in word2idx else word2idx[UNK]
-                for w in head])
-            inputs.append([word2idx[w] if w in word2idx else word2idx[UNK]
-                for w in body[:args.max_text_len]])
+    start = batch_idx * args.batch_size
+    end = min(len(data), (batch_idx + 1) * args.batch_size)
 
+    for i in range(start, end):
+        docid, head, body = data[i]
+        inputs.append(body[:args.max_text_len])
+        targets.append([word2idx[SOS]] + head + [word2idx[EOS]])
+
+    epoch_end = len(targets) < args.batch_size
     if len(targets) == 0:
         # deal with the empty case separately because it will fail with
         # zip(*seq_pairs)
@@ -50,7 +45,7 @@ def read_batch(word2idx, docs):
 def build_vocab():
     print("build vocab")
     vocab = {}
-    docs = MyReader(args.dataset).gen_docs()
+    docs = MyReader(args.rawdata).gen_docs()
     for docid, head, body in docs:
         print(docid, len(vocab))
         if len(head) > 0 and len(body) > 0:
@@ -105,21 +100,20 @@ def mask_loss(logp, target_lens, targets):
     # -: negative log likelihood
     return -loss
 
-def train():
+def train(data):
     s2s = Seq2Seq.Seq2Seq(args).cuda()
     print(s2s)
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate)
 
     for ep in range(args.nepochs):
         epoch_end = False
-        docs = MyReader(args.dataset).gen_docs()
         batch_idx = 0
         epoch_loss = 0
+        random.shuffle(data)
         ts = time.time()
         while not epoch_end:
-            batch_idx += 1
-            inputs, targets, input_lens, target_lens, epoch_end = read_batch(
-                    word2idx, docs)
+            inputs, targets, input_lens, target_lens, epoch_end = next_batch(
+                    batch_idx, data)
             if len(targets) == 0:
                 continue
             targets = torch.LongTensor(targets).cuda()
@@ -130,6 +124,7 @@ def train():
             loss.backward()
             s2s_opt.step()
             epoch_loss += loss.data[0]
+            batch_idx += 1
             if batch_idx % 20 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
                     time.time() - ts, loss.data[0]))
@@ -149,7 +144,7 @@ def summarize(s2s, inputs, input_lens, targets, target_lens):
             seq += idx2word[idx] + " "
             if idx2word[idx] == EOS:
                 break
-        return seq
+        return seq.encode('utf-8')
 
     for i in range(min(len(targets), 3)):
         symbols = list_symbols[i]
@@ -159,8 +154,10 @@ def summarize(s2s, inputs, input_lens, targets, target_lens):
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--dataset', type=str, default=
+    argparser.add_argument('--rawdata', type=str, default=
             "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_20101*")
+    argparser.add_argument('--vecdata', type=str, default=
+            "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_201001.pkl")
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/bchen2/1001Nights/")
     argparser.add_argument('--emb_bin_fname', type=str, default=
@@ -173,13 +170,13 @@ if __name__ == "__main__":
     argparser.add_argument('--build_emb', action='store_true')
 
     argparser.add_argument('--batch_size', type=int, default=40)
-    argparser.add_argument('--emb_size', type=int, default=100)
-    argparser.add_argument('--hidden_size', type=int, default=100)
+    argparser.add_argument('--emb_size', type=int, default=80)
+    argparser.add_argument('--hidden_size', type=int, default=80)
     argparser.add_argument('--vocab_size', type=int, default=50000)
     argparser.add_argument('--nlayers', type=int, default=2)
-    argparser.add_argument('--nepochs', type=int, default=40)
+    argparser.add_argument('--nepochs', type=int, default=100)
     argparser.add_argument('--max_title_len', type=int, default=20)
-    argparser.add_argument('--max_text_len', type=int, default=1000)
+    argparser.add_argument('--max_text_len', type=int, default=200)
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=0.5)
 
@@ -190,5 +187,8 @@ if __name__ == "__main__":
     elif args.build_emb:
         build_emb()
     else:
-        word2idx, idx2word = get_vocab_idx()
-        train()
+        vecdata = pickle.load(open(args.vecdata, "rb"))
+        word2idx = vecdata["word2idx"]
+        idx2word = vecdata["idx2word"]
+        args.vocab_size = len(word2idx)
+        train(vecdata["text_vecs"])
