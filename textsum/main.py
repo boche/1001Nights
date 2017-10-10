@@ -16,6 +16,15 @@ def pad_seq(seq, max_length):
     seq += [0] * (max_length - len(seq))
     return seq
 
+def group_data(data):
+    group_data = []
+    # sort by input length, group inputs with close length in a batch
+    sorted_data = sorted(data, key = lambda x: len(x[2]), reverse = True)
+    nbatches = (len(data) + args.batch_size - 1) // args.batch_size
+    for batch_idx in range(nbatches):
+        group_data.append(next_batch(batch_idx, sorted_data))
+    return group_data
+
 def next_batch(batch_idx, data):
     targets, inputs = [], []
     start = batch_idx * args.batch_size
@@ -26,21 +35,12 @@ def next_batch(batch_idx, data):
         inputs.append(body[:args.max_text_len])
         targets.append([word2idx[SOS]] + head + [word2idx[EOS]])
 
-    epoch_end = len(targets) < args.batch_size
-    if len(targets) == 0:
-        # deal with the empty case separately because it will fail with
-        # zip(*seq_pairs)
-        return inputs, targets, [], [], epoch_end
-    else:
-        # sort by input length, create a padded sequence
-        seq_pairs = sorted(zip(inputs, targets), key = lambda p: len(p[0]),
-                reverse = True)
-        inputs, targets = zip(*seq_pairs)
-        input_lens = [len(x) for x in inputs]
-        inputs = [pad_seq(x, max(input_lens)) for x in inputs]
-        target_lens = [len(y) for y in targets]
-        targets = [pad_seq(y, max(target_lens)) for y in targets]
-        return inputs, targets, input_lens, target_lens, epoch_end
+    # create a padded sequence
+    input_lens = [len(x) for x in inputs]
+    inputs = [pad_seq(x, max(input_lens)) for x in inputs]
+    target_lens = [len(y) for y in targets]
+    targets = [pad_seq(y, max(target_lens)) for y in targets]
+    return inputs, targets, input_lens, target_lens
 
 def build_vocab():
     print("build vocab")
@@ -106,16 +106,11 @@ def train(data):
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate)
 
     for ep in range(args.nepochs):
-        epoch_end = False
         batch_idx = 0
         epoch_loss = 0
         random.shuffle(data)
         ts = time.time()
-        while not epoch_end:
-            inputs, targets, input_lens, target_lens, epoch_end = next_batch(
-                    batch_idx, data)
-            if len(targets) == 0:
-                continue
+        for inputs, targets, input_lens, target_lens in data:
             targets = torch.LongTensor(targets).cuda()
             inputs = torch.LongTensor(inputs).cuda()
             logp = s2s(inputs, input_lens, targets)
@@ -157,7 +152,7 @@ if __name__ == "__main__":
     argparser.add_argument('--rawdata', type=str, default=
             "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_20101*")
     argparser.add_argument('--vecdata', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_201001.pkl")
+            "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010.pkl")
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/bchen2/1001Nights/")
     argparser.add_argument('--emb_bin_fname', type=str, default=
@@ -169,7 +164,7 @@ if __name__ == "__main__":
     argparser.add_argument('--build_vocab', action='store_true')
     argparser.add_argument('--build_emb', action='store_true')
 
-    argparser.add_argument('--batch_size', type=int, default=40)
+    argparser.add_argument('--batch_size', type=int, default=64)
     argparser.add_argument('--emb_size', type=int, default=80)
     argparser.add_argument('--hidden_size', type=int, default=80)
     argparser.add_argument('--vocab_size', type=int, default=50000)
@@ -191,4 +186,4 @@ if __name__ == "__main__":
         word2idx = vecdata["word2idx"]
         idx2word = vecdata["idx2word"]
         args.vocab_size = len(word2idx)
-        train(vecdata["text_vecs"])
+        train(group_data(vecdata["text_vecs"]))
