@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[101]:
+# In[114]:
 
 
 import sys
@@ -15,7 +15,7 @@ import random
 import xml.etree.ElementTree as ET
 
 
-# In[102]:
+# In[115]:
 
 
 class Extractor:
@@ -61,10 +61,10 @@ class Extractor:
                     self.parse_doc(content)  
             f.close()
             self.file_id += 1
-        print('Finish. Extracted {} documents'.format(self.doc_cnt))
+        print(' - Finish. Extracted {} documents'.format(self.doc_cnt))
 
 
-# In[103]:
+# In[116]:
 
 
 def build_vocab(docs, path):
@@ -85,7 +85,7 @@ def build_vocab(docs, path):
     return vocab
 
 
-# In[104]:
+# In[117]:
 
 
 def vectorize_docs(word2idx, docs):
@@ -100,10 +100,11 @@ def vectorize_docs(word2idx, docs):
             headline_vec = list(map(lambda x: word2idx.get(x, word2idx[UNK]), headline))
             body_vec = list(map(lambda x: word2idx.get(x, word2idx[UNK]), body))
             docs_vec.append((docid, headline_vec, body_vec))
+    print(' - Finish.')
     return docs_vec
 
 
-# In[105]:
+# In[118]:
 
 
 def build_index(vocab, vocab_size):
@@ -117,6 +118,7 @@ def build_index(vocab, vocab_size):
     for word, _ in word_cnt:
         idx2word.append(word)
         word2idx[word] = len(word2idx)
+    print(' - Finish.')
     return word2idx, idx2word
 
 
@@ -124,26 +126,25 @@ def build_index(vocab, vocab_size):
 
 
 if __name__ == "__main__":
-    dataset_yr2010 = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_2010*"
-    dataset = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_201001.xml.gz"
+    # dataset = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_2010*"
+    dataset = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_201002.xml.gz"
     
+    version = dataset.split('/')[-1].replace('.xml.gz', '') 
     output_path = "/data/ASR5/haomingc/1001Nights/"
-    dir_name = dataset.split('/')[-1].replace('.xml.gz', '') 
-    vocab_pkl_dir = '{}vocab_{}.pkl'.format(output_path, dir_name)
-    emb_pkl_dir = '{}embedding_{}.pkl'.format(output_path, dir_name)
-    train_pkl_dir = '{}train_data_{}.pkl'.format(output_path, dir_name)
+    # emb_pkl_path = '{}embedding_{}.pkl'.format(output_path, version)
+    vocab_pkl_path = '{}vocab_{}.pkl'.format(output_path, version)
+    train_pkl_path = '{}train_data_{}.pkl'.format(output_path, version)
     
-    # reader = Extractor(dataset)
-    reader = Extractor(dataset_yr2010 + '*')
+    reader = Extractor(dataset)
     reader.gen_docs()
 
     train_data = {}
     vocab_size = 50000
-    vocab = build_vocab(reader.docs, vocab_pkl_dir)
+    vocab = build_vocab(reader.docs, vocab_pkl_path)
     
     word2idx, idx2word = build_index(vocab, vocab_size)
     train_data['word2idx'], train_data['idx2word'] = word2idx, idx2word
     
     train_data['text_vecs'] = vectorize_docs(word2idx, reader.docs)
-    pickle.dump(train_data, open(train_pkl_dir, "wb"))
+    pickle.dump(train_data, open(train_pkl_path, "wb"))
 
