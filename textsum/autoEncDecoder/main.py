@@ -1,13 +1,13 @@
 import sys
 import argparse
 import numpy as np
-import gensim
+# import gensim
 import time
 import pickle
 import torch
 from MyReader import MyReader
 from tokens import *
-from model.EncoderRNN import EncoderRNN
+# from model.EncoderRNN import EncoderRNN
 
 
 def pad_seq(seq, max_length):
