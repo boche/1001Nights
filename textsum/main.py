@@ -41,7 +41,7 @@ def next_batch(batch_idx, data):
     inputs = [pad_seq(x, max(input_lens)) for x in inputs]
     target_lens = [len(y) for y in targets]
     targets = [pad_seq(y, max(target_lens)) for y in targets]
-    return inputs, targets, input_lens, target_lens
+    return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
 
 def build_vocab():
     print("build vocab")
@@ -102,22 +102,27 @@ def mask_loss(logp, target_lens, targets):
     return -loss
 
 def train(data):
-    s2s = Seq2Seq.Seq2Seq(args).cuda()
+    nbatch = len(data)
+    ntest = nbatch // 10
+    train_data = data[:-ntest]
+    test_data = data[-ntest:]
+    s2s = Seq2Seq.Seq2Seq(args)
+    if args.use_cuda:
+        s2s = s2s.cuda()
     print(s2s)
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate)
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     print("identifier:", identifier)
 
     for ep in range(args.nepochs):
-        batch_idx = 0
-        epoch_loss = 0
-        random.shuffle(data)
-        sum_len = 0
         ts = time.time()
-
-        for inputs, targets, input_lens, target_lens in data:
-            targets = torch.LongTensor(targets).cuda()
-            inputs = torch.LongTensor(inputs).cuda()
+        batch_idx = 0
+        random.shuffle(train_data)
+        epoch_loss, sum_len = 0, 0
+        for inputs, targets, input_lens, target_lens in train_data:
+            if args.use_cuda:
+                targets = targets.cuda()
+                inputs = inputs.cuda()
             logp = s2s(inputs, input_lens, targets)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
@@ -132,8 +137,21 @@ def train(data):
                     time.time() - ts, loss.data[0]))
                 summarize(s2s, inputs, input_lens, targets, target_lens)
                 sys.stdout.flush()
-        print("Epoch %d, loss: %.2f, #batch: %d, time %.2f sec" % (
-            ep + 1, epoch_loss / sum_len, batch_idx, time.time() - ts))
+        train_loss = epoch_loss / sum_len
+
+        epoch_loss, sum_len = 0, 0
+        for inputs, targets, input_lens, target_lens in test_data:
+            if args.use_cuda:
+                targets = targets.cuda()
+                inputs = inputs.cuda()
+            logp = s2s(inputs, input_lens, targets)
+            loss = mask_loss(logp, target_lens, targets)
+            sum_len += sum(target_lens)
+            epoch_loss += loss.data[0]
+        print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
+                % (ep + 1, train_loss, epoch_loss / sum_len, batch_idx, time.time() - ts))
+        epoch_loss = 0
+        sum_len = 0
         # save model every epoch
         model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
@@ -172,6 +190,7 @@ if __name__ == "__main__":
 
     argparser.add_argument('--build_vocab', action='store_true')
     argparser.add_argument('--build_emb', action='store_true')
+    argparser.add_argument('--use_cuda', action='store_true', default = False)
 
     argparser.add_argument('--batch_size', type=int, default=32)
     argparser.add_argument('--emb_size', type=int, default=128)
@@ -198,4 +217,4 @@ if __name__ == "__main__":
         idx2word = vecdata["idx2word"]
         args.vocab_size = len(word2idx)
         train(group_data(vecdata["text_vecs"]))
-        # train(group_data(vecdata["text_vecs"][:5000]))
+        # train(group_data(vecdata["text_vecs"][:500]))

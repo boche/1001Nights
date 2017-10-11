@@ -39,12 +39,14 @@ class DecoderRNN(nn.Module):
                 _, batch_input = torch.max(logp, 1, keepdim=False)
         return batch_output
 
-    def summarize(self, encoder_hidden, max_seq_len):
+    def summarize(self, encoder_hidden, max_seq_len, use_cuda):
         batch_size = encoder_hidden.size(1)
 
         h = encoder_hidden
         # here it's assuming SOS has index 0
-        batch_input = Variable(torch.Tensor.long(torch.zeros(batch_size)).cuda())
+        batch_input = Variable(torch.Tensor.long(torch.zeros(batch_size)))
+        if use_cuda:
+            batch_input = batch_input.cuda()
         batch_output = []
         batch_symbol = [batch_input]
 
