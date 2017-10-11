@@ -11,12 +11,13 @@ import random
 import xml.etree.ElementTree as ET
 
 class Extractor:
-    def __init__(self, pattern):
+    def __init__(self, pattern, max_text_len):
         self.filenames = glob.glob(pattern)
         # print(self.filenames)
         self.file_id = 0
         self.doc_cnt = 0
         self.docs = []
+        self.max_text_len = max_text_len
         
     def textify(self, content):
         return [x.lower() for x in re.findall("([^\s)]+)\)", content)]
@@ -25,6 +26,7 @@ class Extractor:
         self.doc_cnt += 1
         if self.doc_cnt % 1000 == 0:
             print(' - Generating Doc {}...'.format(self.doc_cnt))
+            sys.stdout.flush()
             
         root = ET.fromstring(content)
         docid = root.attrib['id']
@@ -36,7 +38,7 @@ class Extractor:
         if text is not None:
             for para in text:
                 body.extend(self.textify(para.text)) 
-        self.docs.append((docid, headline, body))
+        self.docs.append((docid, headline, body[:self.max_text_len]))
     
     def gen_docs(self):
         print('Extracting documents...')
@@ -62,6 +64,7 @@ def build_vocab(docs, path):
     for idx, d in enumerate(docs):
         if idx % 1000 == 0:
             print(' - Scanning Doc {} out of {} docs...'.format(idx, len(docs)))
+            sys.stdout.flush()
         docid, headline, body = d
         # print(docid, len(vocab))
         
@@ -80,6 +83,7 @@ def vectorize_docs(word2idx, docs):
     for idx, d in enumerate(docs):
         if idx % 1000 == 0:
             print(' - Vectoring Doc {} out of {} docs...'.format(idx, len(docs)))
+            sys.stdout.flush()
             
         docid, headline, body = d
         if len(headline) > 0 and len(body) > 0:
@@ -106,19 +110,24 @@ def build_index(vocab, vocab_size):
 
 
 if __name__ == "__main__":
-    # dataset = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_2010*"
-    dataset = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_201002.xml.gz"
+    dataset = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_2010*"
+    # dataset = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_201002.xml.gz"
     
+    vocab_size = 10000
+    max_text_len = 128
+    identifier = "v%d_tl%d" % (vocab_size, max_text_len)
     version = dataset.split('/')[-1].replace('.xml.gz', '') 
+    version = dataset.split('/')[-1].replace('*', '') 
     output_path = "/data/ASR5/haomingc/1001Nights/"
-    vocab_pkl_path = '{}vocab_{}.pkl'.format(output_path, version)
-    train_pkl_path = '{}train_data_{}.pkl'.format(output_path, version)
+    vocab_pkl_path = '{}vocab_{}_{}.pkl'.format(output_path, version, identifier)
+    train_pkl_path = '{}train_data_{}_{}.pkl'.format(output_path, version, identifier)
+    print(vocab_pkl_path)
+    print(train_pkl_path)
     
-    reader = Extractor(dataset)
+    reader = Extractor(dataset, max_text_len)
     reader.gen_docs()
 
     train_data = {}
-    vocab_size = 50000
     vocab = build_vocab(reader.docs, vocab_pkl_path)
     
     word2idx, idx2word = build_index(vocab, vocab_size)
@@ -126,5 +135,3 @@ if __name__ == "__main__":
     
     train_data['text_vecs'] = vectorize_docs(word2idx, reader.docs)
     pickle.dump(train_data, open(train_pkl_path, "wb"))
-    
-    

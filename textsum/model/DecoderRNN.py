@@ -29,8 +29,8 @@ class DecoderRNN(nn.Module):
         for t in range(1, max_seq_len):
             input_emb = self.emb(batch_input).unsqueeze(1)
             rnn_output, h = self.rnn(input_emb, h)
-            xout = self.out(rnn_output)
-            logp = F.log_softmax(xout).squeeze(1)
+            xout = self.out(rnn_output).squeeze(1)
+            logp = F.log_softmax(xout)
             batch_output.append(logp)
 
             if use_teacher_forcing:

@@ -103,6 +103,7 @@ def mask_loss(logp, target_lens, targets):
 
 def train(data):
     nbatch = len(data)
+    random.shuffle(data)
     ntest = nbatch // 10
     train_data = data[:-ntest]
     test_data = data[-ntest:]
@@ -194,10 +195,10 @@ if __name__ == "__main__":
 
     argparser.add_argument('--batch_size', type=int, default=32)
     argparser.add_argument('--emb_size', type=int, default=128)
-    argparser.add_argument('--hidden_size', type=int, default=256)
+    argparser.add_argument('--hidden_size', type=int, default=128)
     argparser.add_argument('--vocab_size', type=int, default=50000)
     argparser.add_argument('--nlayers', type=int, default=1)
-    argparser.add_argument('--nepochs', type=int, default=100)
+    argparser.add_argument('--nepochs', type=int, default=10)
     argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=128)
     argparser.add_argument('--learning_rate', type=float, default=0.003)
@@ -216,5 +217,5 @@ if __name__ == "__main__":
         word2idx = vecdata["word2idx"]
         idx2word = vecdata["idx2word"]
         args.vocab_size = len(word2idx)
-        train(group_data(vecdata["text_vecs"]))
-        # train(group_data(vecdata["text_vecs"][:500]))
+        # train(group_data(vecdata["text_vecs"]))
+        train(group_data(vecdata["text_vecs"][:10000]))
