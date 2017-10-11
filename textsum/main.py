@@ -179,10 +179,14 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--rawdata', type=str, default=
             "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_20101*")
+    # argparser.add_argument('--vecdata', type=str, default=
+            # "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
+    # argparser.add_argument('--save_path', type=str, default=
+            # "/data/ASR5/bchen2/1001Nights/")
     argparser.add_argument('--vecdata', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
+            "/pylon5/ci560ip/bchen5/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
     argparser.add_argument('--save_path', type=str, default=
-            "/data/ASR5/bchen2/1001Nights/")
+            "/pylon5/ci560ip/bchen5/1001Nights/")
     argparser.add_argument('--emb_bin_fname', type=str, default=
             "GoogleNews-vectors-negative300.bin.gz")
     argparser.add_argument('--vocab_fname', type = str, default="vocab2010.pkl")
@@ -198,9 +202,9 @@ if __name__ == "__main__":
     argparser.add_argument('--hidden_size', type=int, default=128)
     argparser.add_argument('--vocab_size', type=int, default=50000)
     argparser.add_argument('--nlayers', type=int, default=1)
-    argparser.add_argument('--nepochs', type=int, default=10)
+    argparser.add_argument('--nepochs', type=int, default=20)
     argparser.add_argument('--max_title_len', type=int, default=20)
-    argparser.add_argument('--max_text_len', type=int, default=128)
+    argparser.add_argument('--max_text_len', type=int, default=64)
     argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=0.5)
     argparser.add_argument('--max_norm', type=float, default=100.0)
@@ -217,5 +221,4 @@ if __name__ == "__main__":
         word2idx = vecdata["word2idx"]
         idx2word = vecdata["idx2word"]
         args.vocab_size = len(word2idx)
-        # train(group_data(vecdata["text_vecs"]))
-        train(group_data(vecdata["text_vecs"][:10000]))
+        train(group_data(vecdata["text_vecs"]))

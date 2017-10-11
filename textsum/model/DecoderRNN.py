@@ -23,7 +23,7 @@ class DecoderRNN(nn.Module):
         use_teacher_forcing = random.random() < self.teach_ratio
 
         h = encoder_hidden
-        batch_input = target[:, 0] #SOS
+        batch_input = Variable(target[:, 0]) #SOS
         batch_output = []
 
         for t in range(1, max_seq_len):
@@ -34,7 +34,7 @@ class DecoderRNN(nn.Module):
             batch_output.append(logp)
 
             if use_teacher_forcing:
-                batch_input = target[: ,t]
+                batch_input = Variable(target[: ,t])
             else:
                 _, batch_input = torch.max(logp, 1, keepdim=False)
         return batch_output
