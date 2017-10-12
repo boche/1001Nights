@@ -5,18 +5,21 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 class DecoderRNN(nn.Module):
-    def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio):
+    def __init__(self, vocab_size, emb, hidden_size, proj_size, nlayers,
+            teach_ratio):
         super(DecoderRNN, self).__init__()
         self.nlayers = nlayers
         self.output_size = vocab_size
         self.hidden_size = hidden_size
+        self.proj_size = proj_size
         self.teach_ratio = teach_ratio
 
         self.emb = emb
         emb_size = self.emb.weight.size(1)
         self.rnn = nn.GRU(input_size=emb_size, hidden_size = hidden_size,
                 num_layers = nlayers, batch_first = True)
-        self.out = nn.Linear(self.hidden_size, self.output_size)
+        # self.l1 = nn.Linear(self.hidden_size, self.proj_size)
+        self.out = nn.Linear(self.proj_size, self.output_size)
 
     def forward(self, target, encoder_hidden):
         batch_size, max_seq_len = target.size()
@@ -29,6 +32,8 @@ class DecoderRNN(nn.Module):
         for t in range(1, max_seq_len):
             input_emb = self.emb(batch_input).unsqueeze(1)
             rnn_output, h = self.rnn(input_emb, h)
+            # xl1 = F.relu(self.l1(rnn_output))
+            # xout = self.out(xl1).squeeze(1)
             xout = self.out(rnn_output).squeeze(1)
             logp = F.log_softmax(xout)
             batch_output.append(logp)
@@ -53,8 +58,10 @@ class DecoderRNN(nn.Module):
         for t in range(1, max_seq_len):
             input_emb = self.emb(batch_input).unsqueeze(1)
             rnn_output, h = self.rnn(input_emb, h)
-            xout = self.out(rnn_output)
-            logp = F.log_softmax(xout).squeeze(1)
+            # xl1 = F.relu(self.l1(rnn_output))
+            # xout = self.out(xl1).squeeze(1)
+            xout = self.out(rnn_output).squeeze(1)
+            logp = F.log_softmax(xout)
             batch_output.append(logp)
 
             _, batch_input = torch.max(logp, 1, keepdim=False)

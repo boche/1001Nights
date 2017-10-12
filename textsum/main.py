@@ -111,7 +111,10 @@ def train(data):
     if args.use_cuda:
         s2s = s2s.cuda()
     print(s2s)
-    s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate)
+    for a in s2s.parameters():
+        print(a.data.size())
+    s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate,
+            weight_decay = args.l2)
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     print("identifier:", identifier)
 
@@ -200,6 +203,7 @@ if __name__ == "__main__":
     argparser.add_argument('--batch_size', type=int, default=32)
     argparser.add_argument('--emb_size', type=int, default=128)
     argparser.add_argument('--hidden_size', type=int, default=128)
+    argparser.add_argument('--proj_size', type=int, default=128)
     argparser.add_argument('--vocab_size', type=int, default=50000)
     argparser.add_argument('--nlayers', type=int, default=1)
     argparser.add_argument('--nepochs', type=int, default=20)
@@ -207,7 +211,8 @@ if __name__ == "__main__":
     argparser.add_argument('--max_text_len', type=int, default=64)
     argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=0.5)
-    argparser.add_argument('--max_norm', type=float, default=100.0)
+    # argparser.add_argument('--max_norm', type=float, default=100.0)
+    argparser.add_argument('--l2', type=float, default=0.01)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
