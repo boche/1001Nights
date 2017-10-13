@@ -18,8 +18,11 @@ class DecoderRNN(nn.Module):
         emb_size = self.emb.weight.size(1)
         self.rnn = nn.GRU(input_size=emb_size, hidden_size = hidden_size,
                 num_layers = nlayers, batch_first = True)
+        # self.rnn = nn.LSTM(input_size=emb_size, hidden_size = hidden_size,
+                # num_layers = nlayers, batch_first = True)
         # self.l1 = nn.Linear(self.hidden_size, self.proj_size)
-        self.out = nn.Linear(self.proj_size, self.output_size)
+        # self.out = nn.Linear(self.proj_size, self.output_size)
+        self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, target, encoder_hidden):
         batch_size, max_seq_len = target.size()
