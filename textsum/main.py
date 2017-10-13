@@ -18,6 +18,9 @@ def pad_seq(seq, max_length):
     return seq
 
 def group_data(data):
+    """
+    data: list of (docid, head, body)
+    """
     group_data = []
     # sort by input length, group inputs with close length in a batch
     sorted_data = sorted(data, key = lambda x: len(x[2]), reverse = True)
@@ -31,6 +34,7 @@ def next_batch(batch_idx, data):
     start = batch_idx * args.batch_size
     end = min(len(data), (batch_idx + 1) * args.batch_size)
 
+    # preprocessing should already discard empty documents
     for i in range(start, end):
         docid, head, body = data[i]
         inputs.append(body[:args.max_text_len])
@@ -42,48 +46,6 @@ def next_batch(batch_idx, data):
     target_lens = [len(y) for y in targets]
     targets = [pad_seq(y, max(target_lens)) for y in targets]
     return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
-
-def build_vocab():
-    print("build vocab")
-    vocab = {}
-    docs = MyReader(args.rawdata).gen_docs()
-    for docid, head, body in docs:
-        print(docid, len(vocab))
-        if len(head) > 0 and len(body) > 0:
-            for w in head:
-                vocab[w] = vocab.get(w, 0) + 1
-            for w in body:
-                vocab[w] = vocab.get(w, 0) + 1
-    pickle.dump(vocab, open(args.save_path + args.vocab_fname, "wb"))
-
-def build_emb():
-    print("build emb")
-    vocab_idx = {}
-    vocab_cnt = pickle.load(open(args.save_path + args.vocab_fname, "rb"))
-    pretrained_emb = gensim.models.KeyedVectors.load_word2vec_format(
-            args.save_path + args.emb_bin_fname, binary=True)
-    emb = []
-    for word, cnt in vocab_cnt.items():
-        if word in pretrained_emb:
-            vocab_idx[word] = len(vocab_idx)
-            emb.append(pretrained_emb[word])
-    emb = np.asarray(emb)
-    pickle.dump((emb, vocab_idx), open(args.save_path + args.emb_pkl_fname, "wb"))
-
-def get_vocab_idx():
-    word_cnt = pickle.load(open(args.save_path + args.vocab_fname, "rb"))
-    word_cnt = sorted(word_cnt.items(), key= lambda x: x[1], reverse = True)
-    word_cnt = word_cnt[:args.vocab_size]
-    word2idx = {}
-    idx2word = []
-    for word in [SOS, EOS, UNK]:
-        idx2word.append(word)
-        word2idx[word] = len(word2idx)
-    for word, _ in word_cnt:
-        idx2word.append(word)
-        word2idx[word] = len(word2idx)
-    args.vocab_size = len(word2idx)
-    return word2idx, idx2word
 
 def mask_loss(logp, target_lens, targets):
     """
@@ -110,12 +72,12 @@ def train(data):
     s2s = Seq2Seq.Seq2Seq(args)
     if args.use_cuda:
         s2s = s2s.cuda()
-    print(s2s)
-    for a in s2s.parameters():
-        print(a.data.size())
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate,
             weight_decay = args.l2)
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+    print(s2s)
+    for param in s2s.parameters():
+        print(param.data.size())
     print("identifier:", identifier)
 
     for ep in range(args.nepochs):
@@ -154,8 +116,6 @@ def train(data):
             epoch_loss += loss.data[0]
         print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
                 % (ep + 1, train_loss, epoch_loss / sum_len, batch_idx, time.time() - ts))
-        epoch_loss = 0
-        sum_len = 0
         # save model every epoch
         model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
@@ -174,14 +134,12 @@ def summarize(s2s, inputs, input_lens, targets, target_lens):
 
     for i in range(min(len(targets), 3)):
         symbols = list_symbols[i]
-        print("sample:", idxes2sent(symbols.cpu().data.numpy()))
+        print("sp:", idxes2sent(symbols.cpu().data.numpy()))
         print("gt:", idxes2sent(targets[i].cpu().numpy()))
         print(80 * '-')
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--rawdata', type=str, default=
-            "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_20101*")
     # argparser.add_argument('--vecdata', type=str, default=
             # "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
     # argparser.add_argument('--save_path', type=str, default=
@@ -190,22 +148,15 @@ if __name__ == "__main__":
             "/pylon5/ci560ip/bchen5/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
     argparser.add_argument('--save_path', type=str, default=
             "/pylon5/ci560ip/bchen5/1001Nights/")
-    argparser.add_argument('--emb_bin_fname', type=str, default=
-            "GoogleNews-vectors-negative300.bin.gz")
-    argparser.add_argument('--vocab_fname', type = str, default="vocab2010.pkl")
-    argparser.add_argument('--emb_pkl_fname', type = str, default="emb2010.pkl")
     argparser.add_argument('--model_fpat', type = str, default="model/s2s-s%s-e%02d.model")
 
-    argparser.add_argument('--build_vocab', action='store_true')
-    argparser.add_argument('--build_emb', action='store_true')
     argparser.add_argument('--use_cuda', action='store_true', default = False)
 
     argparser.add_argument('--batch_size', type=int, default=32)
     argparser.add_argument('--emb_size', type=int, default=128)
     argparser.add_argument('--hidden_size', type=int, default=128)
-    argparser.add_argument('--proj_size', type=int, default=128)
     argparser.add_argument('--vocab_size', type=int, default=50000)
-    argparser.add_argument('--nlayers', type=int, default=4)
+    argparser.add_argument('--nlayers', type=int, default=3)
     argparser.add_argument('--nepochs', type=int, default=50)
     argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=128)
@@ -217,13 +168,8 @@ if __name__ == "__main__":
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
         print(k, v)
-    if args.build_vocab:
-        build_vocab()
-    elif args.build_emb:
-        build_emb()
-    else:
-        vecdata = pickle.load(open(args.vecdata, "rb"))
-        word2idx = vecdata["word2idx"]
-        idx2word = vecdata["idx2word"]
-        args.vocab_size = len(word2idx)
-        train(group_data(vecdata["text_vecs"]))
+    vecdata = pickle.load(open(args.vecdata, "rb"))
+    word2idx = vecdata["word2idx"]
+    idx2word = vecdata["idx2word"]
+    args.vocab_size = len(word2idx)
+    train(group_data(vecdata["text_vecs"]))
