@@ -6,7 +6,7 @@
 #PBS -V
 #PBS -l walltime=48:00:00
 #PBS -N Seq2Seq
-#PBS -q gpu
+#PBS -q default
 
 ## for XSede comet cluster ###
 ### submit sbatch ---ignore-pbs train-2-gpu.sh
@@ -18,11 +18,8 @@
 #SBATCH --time="24:00:00"
 
 module load gcc-4.9.2
-module load cuda-8.0
-export CUDA_VISIBLE_DEVICES=`qstat -n $PBS_JOBID|awk 'END {split ($NF, a, "/"); printf ("%s\n", a[2])}'`
 echo $HOSTNAME
-echo "Running on gpu"
-echo "Device = $CUDA_VISIBLE_DEVICES"
+echo "Running on cpu"
 #python main.py --build_vocab
 #python main.py --build_emb
 python main.py

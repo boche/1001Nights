@@ -1,6 +1,7 @@
 import sys
 import argparse
 import random
+import string
 import numpy as np
 import gensim
 import time
@@ -40,7 +41,7 @@ def next_batch(batch_idx, data):
     inputs = [pad_seq(x, max(input_lens)) for x in inputs]
     target_lens = [len(y) for y in targets]
     targets = [pad_seq(y, max(target_lens)) for y in targets]
-    return inputs, targets, input_lens, target_lens
+    return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
 
 def build_vocab():
     print("build vocab")
@@ -101,33 +102,63 @@ def mask_loss(logp, target_lens, targets):
     return -loss
 
 def train(data):
-    s2s = Seq2Seq.Seq2Seq(args).cuda()
+    nbatch = len(data)
+    random.shuffle(data)
+    ntest = nbatch // 10
+    train_data = data[:-ntest]
+    test_data = data[-ntest:]
+    s2s = Seq2Seq.Seq2Seq(args)
+    if args.use_cuda:
+        s2s = s2s.cuda()
     print(s2s)
-    s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate)
+    for a in s2s.parameters():
+        print(a.data.size())
+    s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate,
+            weight_decay = args.l2)
+    identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+    print("identifier:", identifier)
 
     for ep in range(args.nepochs):
-        batch_idx = 0
-        epoch_loss = 0
-        random.shuffle(data)
         ts = time.time()
-        for inputs, targets, input_lens, target_lens in data:
-            targets = torch.LongTensor(targets).cuda()
-            inputs = torch.LongTensor(inputs).cuda()
+        batch_idx = 0
+        random.shuffle(train_data)
+        epoch_loss, sum_len = 0, 0
+        for inputs, targets, input_lens, target_lens in train_data:
+            if args.use_cuda:
+                targets = targets.cuda()
+                inputs = inputs.cuda()
             logp = s2s(inputs, input_lens, targets)
             loss = mask_loss(logp, target_lens, targets)
+            sum_len += sum(target_lens)
             s2s_opt.zero_grad()
             loss.backward()
+            # torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
             s2s_opt.step()
             epoch_loss += loss.data[0]
             batch_idx += 1
-            if batch_idx % 20 == 0:
+            if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
                     time.time() - ts, loss.data[0]))
                 summarize(s2s, inputs, input_lens, targets, target_lens)
                 sys.stdout.flush()
-        print("Epoch %d, loss: %.2f, #batch: %d" % (ep + 1, epoch_loss, batch_idx))
+        train_loss = epoch_loss / sum_len
+
+        epoch_loss, sum_len = 0, 0
+        for inputs, targets, input_lens, target_lens in test_data:
+            if args.use_cuda:
+                targets = targets.cuda()
+                inputs = inputs.cuda()
+            logp = s2s(inputs, input_lens, targets)
+            loss = mask_loss(logp, target_lens, targets)
+            sum_len += sum(target_lens)
+            epoch_loss += loss.data[0]
+        print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
+                % (ep + 1, train_loss, epoch_loss / sum_len, batch_idx, time.time() - ts))
+        epoch_loss = 0
+        sum_len = 0
         # save model every epoch
-        torch.save(s2s, args.save_path + args.model_fname)
+        model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
+        torch.save(s2s, model_fname)
 
 def summarize(s2s, inputs, input_lens, targets, target_lens):
     logp, list_symbols = s2s.summarize(inputs, input_lens)
@@ -151,32 +182,41 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--rawdata', type=str, default=
             "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_20101*")
+    # argparser.add_argument('--vecdata', type=str, default=
+            # "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
+    # argparser.add_argument('--save_path', type=str, default=
+            # "/data/ASR5/bchen2/1001Nights/")
     argparser.add_argument('--vecdata', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010.pkl")
+            "/pylon5/ci560ip/bchen5/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
     argparser.add_argument('--save_path', type=str, default=
-            "/data/ASR5/bchen2/1001Nights/")
+            "/pylon5/ci560ip/bchen5/1001Nights/")
     argparser.add_argument('--emb_bin_fname', type=str, default=
             "GoogleNews-vectors-negative300.bin.gz")
     argparser.add_argument('--vocab_fname', type = str, default="vocab2010.pkl")
     argparser.add_argument('--emb_pkl_fname', type = str, default="emb2010.pkl")
-    argparser.add_argument('--model_fname', type = str, default="s2s.model")
+    argparser.add_argument('--model_fpat', type = str, default="model/s2s-s%s-e%02d.model")
 
     argparser.add_argument('--build_vocab', action='store_true')
     argparser.add_argument('--build_emb', action='store_true')
+    argparser.add_argument('--use_cuda', action='store_true', default = False)
 
-    argparser.add_argument('--batch_size', type=int, default=64)
-    argparser.add_argument('--emb_size', type=int, default=80)
-    argparser.add_argument('--hidden_size', type=int, default=80)
+    argparser.add_argument('--batch_size', type=int, default=32)
+    argparser.add_argument('--emb_size', type=int, default=128)
+    argparser.add_argument('--hidden_size', type=int, default=128)
+    argparser.add_argument('--proj_size', type=int, default=128)
     argparser.add_argument('--vocab_size', type=int, default=50000)
-    argparser.add_argument('--nlayers', type=int, default=2)
-    argparser.add_argument('--nepochs', type=int, default=100)
+    argparser.add_argument('--nlayers', type=int, default=1)
+    argparser.add_argument('--nepochs', type=int, default=20)
     argparser.add_argument('--max_title_len', type=int, default=20)
-    argparser.add_argument('--max_text_len', type=int, default=200)
-    argparser.add_argument('--learning_rate', type=float, default=0.001)
+    argparser.add_argument('--max_text_len', type=int, default=64)
+    argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=0.5)
+    # argparser.add_argument('--max_norm', type=float, default=100.0)
+    argparser.add_argument('--l2', type=float, default=0.01)
 
     args = argparser.parse_args()
-    print(args)
+    for k, v in args.__dict__.items():
+        print(k, v)
     if args.build_vocab:
         build_vocab()
     elif args.build_emb:
