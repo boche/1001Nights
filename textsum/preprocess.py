@@ -13,17 +13,18 @@ import random
 import xml.etree.ElementTree as ET
 
 class Extractor:
-    def __init__(self, pattern):
-        self.filenames = glob.glob(pattern)
-        logging.info('--- Found {} files (months) ---'.format(len(self.filenames)))
+    def __init__(self):
+        self.filenames = None
         self.doc_cnt = 0
-        self.docs = []
-        self.vocab = {} 
         self.word2idx = {}
         self.idx2word = []
-        
+    
     def textify(self, content):
         return [x.lower() for x in re.findall("([^\s)]+)\)", content)]
+    
+    def find_doc(self):
+        self.filenames = glob.glob(args.raw_data)
+        logging.info('--- Found {} files (months) ---'.format(len(self.filenames)))
     
     def parse_doc(self, content):
         if self.doc_cnt % 1000 == 0:
@@ -34,32 +35,29 @@ class Extractor:
         text = root.find("TEXT")
         headline = root.find("HEADLINE")
         if None in [headline, text]:
-            return
+            return None, None, None
         
         self.doc_cnt += 1
         headline, body = self.textify(headline.text), []
         for para in text:
             body.extend(self.textify(para.text)) 
-                
-        self.docs.append((docid, headline, body))
-        for words in filter(lambda x: len(x), [headline, body]):
-            self.extend_vocab(words)
-            self.extend_word_index(words)
-    
-    def extend_vocab(self, words):
-        for w in words:
-            self.vocab[w] = self.vocab.get(w, 0) + 1
+        return docid, headline, body
         
     def extend_word_index(self, words):
+        vec_words = []
         for w in words:
             if w not in self.word2idx:
                 self.idx2word.append(w)
                 self.word2idx[w] = len(self.word2idx)
+            vec_words.append(self.word2idx[w])
+        return vec_words
     
     def gen_docs(self):
-        logging.info('--- Extracting documents by month ---')        
+        logging.info('--- Extracting documents by month ---')  
+        self.find_doc()
+        
         for filename in self.filenames:
-            self.docs, content = [], ""
+            docs, content = [], ""
             f = gzip.open(filename, 'r')
             for line in f:    
                 line = line.decode("utf-8")
@@ -67,20 +65,26 @@ class Extractor:
                     content = ""
                 content += line
                 if "</DOC>" in line:
-                    self.parse_doc(content) 
+                    docid, headline, body = self.parse_doc(content)
+                    if docid is not None:
+                        headline_vec = self.extend_word_index(headline)
+                        body_vec = self.extend_word_index(body)
+                        docs.append((docid, headline_vec, body_vec))
+                        
+                        # headline_rev = list(map(lambda x:self.idx2word[x], headline_vec))
+                        # assert headline_rev == headline
             f.close()
             
             # save one month's text data into pickle 
             volume = filename.split('/')[-1].replace('.xml.gz', '')   
             logging.info('--- Saving file: {} ---'.format(volume))        
-            pickle.dump(self.docs, open("{}.pkl".format(args.save_path + volume), "wb"))
+            pickle.dump(docs, open("{}.pkl".format(args.save_path + volume), "wb"))
         
+        i2w_path = '{}idx2word_full.pkl'.format(args.save_path)
+        pickle.dump(self.idx2word, open(i2w_path, 'wb'))
         logging.info('--- Finish extracting {} documents ---'.format(self.doc_cnt))        
-        index = {"vocab": self.vocab, "word2idx": self.word2idx, "idx2word": self.idx2word}
-        index_path = '{}index.pkl'.format(args.save_path)
-        pickle.dump(index, open(index_path, 'wb'))
-        logging.info('--- Extracted documents saved in {} ---'.format(index_path))
-        logging.info('--- Format: list[tuple(docid, headline, body)] ---')
+        logging.info('--- Extracted documents saved in {} ---'.format(args.save_path))
+        logging.info('--- Format: list[tuple(docid, headline_vec, body_vec)] ---')
         
 
 class Vectorizer:
@@ -165,9 +169,9 @@ if __name__ == "__main__":
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/haomingc/1001Nights/nyt/")
     argparser.add_argument('--index_path', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/nyt/index.pkl")
-    argparser.add_argument('--mode', type=str, choices=['extract', 'vectorize'], help=
-            "[extract] docs from raw XML or [vectorize] docs for training", default='vectorize')
+            "/data/ASR5/haomingc/1001Nights/nyt/idx2word_full.pkl")
+    argparser.add_argument('--mode', type=str, choices=['extract', 'index'], help=
+            "[extract] docs from raw XML or [index] docs for training", default='extract')
     argparser.add_argument('--time_interval', type=str, default="201001-201012", help=
             "format: start_month-end_month, inclusive, range=[199407, 201012]")
     argparser.add_argument('--vocab_size', type=int, default=50000)
@@ -178,10 +182,10 @@ if __name__ == "__main__":
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
     if args.mode == 'extract':
-        reader = Extractor(args.raw_data)
+        reader = Extractor()
         reader.gen_docs()
-    if args.mode == 'vectorize':
-        vectorizer = Vectorizer()
-        vectorizer.vec_docs()
+    # if args.mode == 'vectorize':
+    #     vectorizer = Vectorizer()
+    #     vectorizer.vec_docs()
     
     
