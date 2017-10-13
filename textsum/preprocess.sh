@@ -21,3 +21,4 @@ module load gcc-4.9.2
 echo $HOSTNAME
 echo "Running on cpu"
 python preprocess.py
+#python preprocess.py --mode compress
