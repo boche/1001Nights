@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-from heapq import *
+import heapq
 
 class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio):
@@ -78,10 +78,10 @@ class DecoderRNN(nn.Module):
                     continue
                 current_logp = last_logp + logp.data.numpy()[0][word.data.numpy()[0]]
                 while len(partial_candidates) + 1 > beam_size and current_logp > partial_candidates[0][0]:
-                    heappop(partial_candidates)
+                    heapq.heappop(partial_candidates)
 
                 if len(partial_candidates) + 1 <= beam_size:
-                    heappush(partial_candidates, (current_logp, (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], h)))
+                    heapq.heappush(partial_candidates, (current_logp, (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], h)))
 
         last_candidates = [(0.0 ,(np.int64(0), [np.int64(0)], [0.0], h))]
 

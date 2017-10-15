@@ -126,19 +126,20 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
     # print(logp)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
 
-    def ind2sent(ind):
+    def idxes2sent(idxes):
         seq = ""
-        for idx in ind:
+        for idx in idxes:
             seq += idx2word[idx] + " "
             if idx2word[idx] == EOS:
                 break
-        return seq.encode('utf-8')
+        # some characters may not be printable if not encode by utf-8
+        return seq.encode('utf-8').decode("utf-8") 
 
     for i in range(min(len(targets), 3)):
         symbols = list_symbols[i]
         decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
-        prediction = ind2sent(symbols.cpu().data.numpy()).decode("utf-8") 
-        truth = ind2sent(targets[i].cpu().numpy()).decode("utf-8") 
+        prediction = idxes2sent(symbols.cpu().data.numpy())
+        truth = idxes2sent(targets[i].cpu().numpy())
         score = rouge([prediction], [truth])
         print("dc:", decode_approach)
         print("sp:", prediction)
@@ -155,7 +156,7 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
 #         logging.info('* {} = {}'.format(param, value))
 
 
-def test(model_path, testset, transform=True):
+def test(model_path, testset, is_text=True):
     
     def vectorize(raw_data):
         data_vec = []
@@ -169,11 +170,9 @@ def test(model_path, testset, transform=True):
     s2s = torch.load(model_path, map_location=lambda storage, loc: storage)
     # switch to CPU for testing 
     s2s.use_cuda = False   
-    encoder = s2s.encoder
-    decoder = s2s.decoder
     
     # transfrom into indice representation for testing 
-    if transform:
+    if is_text:
         testset = vectorize(testset)
     
     # mini-batch test mode
@@ -194,14 +193,14 @@ def test(model_path, testset, transform=True):
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
         summarize(s2s, inputs, [len(body)], targets, [len(headline)])
         
-def gen_pseudo_data(test_size):
+def vec2text(test_size):
     data = vecdata["text_vecs"][:test_size]
-    ret = []
+    data_text = []
     for docid, headline, body in data:
         raw_headline = [idx2word[w] for w in headline]
         raw_body = [idx2word[w] for w in body]
-        ret.append((docid, raw_headline, raw_body))
-    return ret
+        data_text.append((docid, raw_headline, raw_body))
+    return data_text
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
@@ -244,5 +243,5 @@ if __name__ == "__main__":
     elif args.mode == 'test':
         model_path = args.save_path + args.model_name
         # testset = []
-        testset = gen_pseudo_data(20)
+        testset = vec2text(20)
         test(model_path, testset)
