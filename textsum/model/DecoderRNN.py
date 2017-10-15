@@ -1,8 +1,10 @@
 import random
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+from heapq import *
 
 class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio):
@@ -60,8 +62,7 @@ class DecoderRNN(nn.Module):
             batch_symbol.append(batch_input)
         return batch_output, batch_symbol
     
-    def summarize_bs(self, encoder_hidden, max_seq_len, use_cuda):
-        beam_size = 4
+    def summarize_bs(self, encoder_hidden, max_seq_len, use_cuda, beam_size=4):
         h = encoder_hidden
         
         def find_candidates(last_logp, last_word, prev_words, outputs, h):

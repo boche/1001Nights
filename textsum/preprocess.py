@@ -64,9 +64,11 @@ class FileReader:
             docs = pickle.load(open(filename, "rb"))
             for _, doc in enumerate(docs):
                 docid, headline, body = doc
-                for w in headline + body:
-                    self.vocab[w] = self.vocab.get(w, 0) + 1
-                self.docs.append(doc)
+                # discard document with empty headline or body
+                if len(headline) > 0 and len(body) > 0:
+                    for w in headline + body:
+                        self.vocab[w] = self.vocab.get(w, 0) + 1
+                    self.docs.append(doc)
     
     def parse_doc(self, content):
         if self.doc_cnt % 1000 == 0:
@@ -179,13 +181,13 @@ if __name__ == "__main__":
     argparser.add_argument('--index_path', type=str, default=
             "/data/ASR5/haomingc/1001Nights/nyt/idx2word_full.pkl")
     argparser.add_argument('--mode', type=str, choices=['compress', 'extract'], help=
-            "[extract] docs from raw XML or [index] docs for training", default='extract')
+            "[compress] docs from raw XML or [extract] docs for training", default='extract')
     argparser.add_argument('--time_interval', type=str, default="201001-201012", help=
             "format: start_month-end_month, inclusive, range=[199407, 201012]")    
     # argparser.add_argument('--time_interval', type=str, default="201001-201012", help=
     #         "format: start_month-end_month, inclusive, range=[199407, 201012]")
     argparser.add_argument('--vocab_size', type=int, default=50000)
-    argparser.add_argument('--max_title_len', type=int, default=20)
+    # argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_body_len', type=int, default=200)
     args = argparser.parse_args()
     logging.basicConfig(level = 'DEBUG', format= 

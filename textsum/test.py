@@ -11,8 +11,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from model import Seq2Seq
-sys.path.append('./evaluation')
-from rouge import * 
 
 def pad_seq(seq, max_length):
     seq += [0] * (max_length - len(seq))
@@ -120,6 +118,7 @@ def train(data):
         # save model every epoch
         model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
+    
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
     logp, list_symbols = s2s.summarize(inputs, input_lens, beam_search)
@@ -137,15 +136,9 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
     for i in range(min(len(targets), 3)):
         symbols = list_symbols[i]
         decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
-        prediction = ind2sent(symbols.cpu().data.numpy()).decode("utf-8") 
-        truth = ind2sent(targets[i].cpu().numpy()).decode("utf-8") 
-        score = rouge([prediction], [truth])
-        print("dc:", decode_approach)
-        print("sp:", prediction)
-        print("gt:", truth)
-        print("Evaluation:")
-        for k, v in score.items():
-            print("- {}: {}".format(k, v))
+        print("dc: {}".format(decode_approach))
+        print("sp:", ind2sent(symbols.cpu().data.numpy()))
+        print("gt:", ind2sent(targets[i].cpu().numpy()))
         print(80 * '-')
         
 # def debug_args(args):
@@ -193,9 +186,10 @@ def test(model_path, testset, transform=True):
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
         summarize(s2s, inputs, [len(body)], targets, [len(headline)])
-        
-def gen_pseudo_data(test_size):
-    data = vecdata["text_vecs"][:test_size]
+
+    
+def gen_pseudo_data():
+    data = vecdata["text_vecs"][:100]
     ret = []
     for docid, headline, body in data:
         raw_headline = [idx2word[w] for w in headline]
@@ -209,10 +203,6 @@ if __name__ == "__main__":
             "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/haomingc/1001Nights/")
-    # argparser.add_argument('--vecdata', type=str, default=
-    #         "/pylon5/ci560ip/bchen5/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
-    # argparser.add_argument('--save_path', type=str, default=
-    #         "/pylon5/ci560ip/bchen5/1001Nights/")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
     argparser.add_argument('--model_fpat', type = str, default="model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
@@ -238,11 +228,10 @@ if __name__ == "__main__":
     idx2word = vecdata["idx2word"]
     args.vocab_size = len(word2idx)
     
-    print("Running mode: {} model...".format(args.mode))
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
         model_path = args.save_path + args.model_name
         # testset = []
-        testset = gen_pseudo_data(20)
+        testset = gen_pseudo_data()
         test(model_path, testset)

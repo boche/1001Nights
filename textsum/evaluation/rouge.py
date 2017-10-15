@@ -141,5 +141,5 @@ def rouge(hypotheses, references):
         "rouge_2/f_score": rouge_2_f,
     }
 
-print (rouge(['today is a good day.', 'best day in my life'], ['good morning', 'good day in my life']))
+# print (rouge(['today is a good day.', 'best day in my life'], ['good morning', 'good day in my life']))
 
