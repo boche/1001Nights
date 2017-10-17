@@ -11,8 +11,10 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from model import Seq2Seq
-sys.path.append('./evaluation')
-from rouge import * 
+# sys.path.append('./evaluation')
+# from rouge import * 
+from rouge import Rouge 
+
 
 def pad_seq(seq, max_length):
     seq += [0] * (max_length - len(seq))
@@ -140,13 +142,18 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
         prediction = idxes2sent(symbols.cpu().data.numpy())
         truth = idxes2sent(targets[i].cpu().numpy())
-        score = rouge([prediction], [truth])
+        hyps[decode_approach].append(prediction)
+        refs[decode_approach].append(truth)
+        
+        # score = rouge.get_scores(prediction, truth)
+        # score = rouge([prediction], [truth])
         print("dc:", decode_approach)
         print("sp:", prediction)
         print("gt:", truth)
-        print("Evaluation:")
-        for k, v in score.items():
-            print("- {}: {}".format(k, v))
+        
+        # print("Evaluation:", score)
+        # for k, v in score.items():
+        #     print("- {}: {}".format(k, v))
         print(80 * '-')
         
 # def debug_args(args):
@@ -193,13 +200,31 @@ def test(model_path, testset, is_text=True):
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
         summarize(s2s, inputs, [len(body)], targets, [len(headline)])
         
-def vec2text(test_size):
+    rouge = Rouge()
+    for decode_way in ["Greedy Search", "Beam Search"]:
+        print("Decode Approach: {}".format(decode_way))
+        avg_score = rouge.get_scores(hyps[decode_way], refs[decode_way], avg=True)
+        for metric, f1_prec_recl in avg_score.items():
+            print("{}: {}".format(metric, f1_prec_recl))
+        
+def vec2text(test_size=500):
     data = vecdata["text_vecs"][:test_size]
     data_text = []
     for docid, headline, body in data:
         raw_headline = [idx2word[w] for w in headline]
         raw_body = [idx2word[w] for w in body]
         data_text.append((docid, raw_headline, raw_body))
+    return data_text
+
+def vec2text_from_full(test_size=500):
+    idx2word_full = pickle.load(open(args.save_path + 'nyt/idx2word_full.pkl', 'rb'))
+    data = pickle.load(open(args.save_path + 'nyt/nyt_eng_200912.pkl', 'rb'))[:test_size]
+    data_text = []
+    for docid, headline, body in data:
+        if len(headline) > 0 and len(body) > 0:
+            raw_headline = [idx2word_full[w] for w in headline]
+            raw_body = [idx2word_full[w] for w in body]
+            data_text.append((docid, raw_headline, raw_body))
     return data_text
 
 if __name__ == "__main__":
@@ -237,11 +262,14 @@ if __name__ == "__main__":
     idx2word = vecdata["idx2word"]
     args.vocab_size = len(word2idx)
     
+    # for evaluation 
+    hyps, refs = {'Greedy Search':[], 'Beam Search':[]}, {'Greedy Search':[], 'Beam Search':[]}
+    
     print("Running mode: {} model...".format(args.mode))
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
         model_path = args.save_path + args.model_name
-        # testset = []
-        testset = vec2text(20)
+        # testset = vec2text()
+        testset = vec2text_from_full()
         test(model_path, testset)
