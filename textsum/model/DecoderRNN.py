@@ -66,6 +66,15 @@ class DecoderRNN(nn.Module):
         h = encoder_hidden
         
         def find_candidates(last_logp, last_word, prev_words, outputs, h):
+            if last_word.item() == 1:
+                while len(final_candidates) >= beam_size and last_logp > final_candidates[0][0]:
+                    heapq.heappop(final_candidates)
+                if len(final_candidates) < beam_size:
+                    heapq.heappush(final_candidates, (last_logp, prev_words))
+                return
+            if final_candidates and last_logp < final_candidates[0][0]:
+                return
+
             inp = Variable(torch.Tensor.long(torch.zeros(1)).fill_(last_word.item()))
             input_emb = self.emb(inp).unsqueeze(1)
             rnn_output, h = self.rnn(input_emb, h)
@@ -74,8 +83,8 @@ class DecoderRNN(nn.Module):
             res, ind = logp.topk(beam_size)
             for i in range(ind.size(1)):
                 word = ind[0][i]
-                if word.data.numpy()[0] == 2:
-                    continue
+                # if word.data.numpy()[0] == 2:
+                #    continue
                 current_logp = last_logp + logp.data.numpy()[0][word.data.numpy()[0]]
                 while len(partial_candidates) + 1 > beam_size and current_logp > partial_candidates[0][0]:
                     heapq.heappop(partial_candidates)
@@ -84,17 +93,22 @@ class DecoderRNN(nn.Module):
                     heapq.heappush(partial_candidates, (current_logp, (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], h)))
 
         last_candidates = [(0.0 ,(np.int64(0), [np.int64(0)], [0.0], h))]
+        final_candidates = []
 
         current_depth = 0
         while last_candidates and current_depth < max_seq_len:
             current_depth += 1
             partial_candidates = []
+            # print('***********')
             for last_logp, (last_word, prev_words, outputs, h) in last_candidates:
                 # print(last_logp, last_word, prev_words)
                 find_candidates(last_logp, last_word, prev_words, outputs, h)
             last_candidates = partial_candidates
-            
-        last_logp, (_, result_sent, outputs, _) = max(last_candidates)
+
+        if final_candidates:
+            last_logp, result_sent = max(final_candidates)
+        else:                     
+            last_logp, (_, result_sent, outputs, _) = max(last_candidates)
         symbol = []
         for result in result_sent:
             symbol.append(Variable(torch.Tensor.long(torch.zeros(1)).fill_(result.item())))
