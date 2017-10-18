@@ -131,9 +131,11 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
     def idxes2sent(idxes):
         seq = ""
         for idx in idxes:
-            seq += idx2word[idx] + " "
+            if idx2word[idx] == SOS:
+                continue
             if idx2word[idx] == EOS:
                 break
+            seq += idx2word[idx] + " "
         # some characters may not be printable if not encode by utf-8
         return seq.encode('utf-8').decode("utf-8") 
 
