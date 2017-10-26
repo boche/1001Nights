@@ -17,9 +17,6 @@
 #SBATCH --export=ALL
 #SBATCH --time="24:00:00"
 
-module load gcc-4.9.2
 echo $HOSTNAME
 echo "Running on cpu"
-#python main.py --build_vocab
-#python main.py --build_emb
 python main.py

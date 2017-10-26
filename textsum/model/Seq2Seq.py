@@ -12,7 +12,6 @@ class Seq2Seq(nn.Module):
         self.hidden_size = args.hidden_size
         self.teach_ratio = args.teach_ratio
         self.max_title_len = args.max_title_len
-        self.use_cuda = args.use_cuda
 
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
@@ -31,8 +30,8 @@ class Seq2Seq(nn.Module):
         logp, symbols = None, None
         if beam_search:
             logp, symbols = self.decoder.summarize_bs(encoder_hidden,
-                    self.max_title_len, self.use_cuda)
+                    self.max_title_len)
         else:
             logp, symbols = self.decoder.summarize(encoder_hidden,
-                    self.max_title_len, self.use_cuda)
+                    self.max_title_len)
         return logp, symbols

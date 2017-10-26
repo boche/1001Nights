@@ -25,11 +25,11 @@ class DecoderRNN(nn.Module):
         use_teacher_forcing = random.random() < self.teach_ratio
 
         h = encoder_hidden
-        batch_input = Variable(target[:, 0]) #SOS
+        batch_input = Variable(target[:, 0]) #SOS, b
         batch_output = []
 
         for t in range(1, max_seq_len):
-            input_emb = self.emb(batch_input).unsqueeze(1)
+            input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
             rnn_output, h = self.rnn(input_emb, h)
             xout = self.out(rnn_output).squeeze(1)
             logp = F.log_softmax(xout)
@@ -41,11 +41,12 @@ class DecoderRNN(nn.Module):
                 _, batch_input = torch.max(logp, 1, keepdim=False)
         return batch_output
 
-    def summarize(self, encoder_hidden, max_seq_len, use_cuda):
+    def summarize(self, encoder_hidden, max_seq_len):
         batch_size = encoder_hidden.size(1)
         h = encoder_hidden
         # here it's assuming SOS has index 0
         batch_input = Variable(torch.Tensor.long(torch.zeros(batch_size)))
+        use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
             batch_input = batch_input.cuda()
         batch_output = []
@@ -62,11 +63,11 @@ class DecoderRNN(nn.Module):
             batch_symbol.append(batch_input)
         return batch_output, batch_symbol
     
-    def summarize_bs(self, encoder_hidden, max_seq_len, use_cuda, beam_size=4):
+    def summarize_bs(self, encoder_hidden, max_seq_len, beam_size=4):
         h = encoder_hidden
         
         def find_candidates(last_logp, last_word, prev_words, outputs, h):
-            if last_word.item() == 1:
+            if last_word.item() == 1: #EOS
                 while len(final_candidates) >= beam_size and last_logp > final_candidates[0][0]:
                     heapq.heappop(final_candidates)
                 if len(final_candidates) < beam_size:

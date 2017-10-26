@@ -3,7 +3,6 @@ import argparse
 import random
 import string
 import numpy as np
-import gensim
 import time
 import pickle
 from tokens import *
@@ -11,10 +10,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from model import Seq2Seq
-# sys.path.append('./evaluation')
-# from rouge import * 
-from rouge import Rouge 
-
+from rouge import Rouge
 
 def pad_seq(seq, max_length):
     seq += [0] * (max_length - len(seq))
@@ -52,11 +48,11 @@ def next_batch(batch_idx, data):
 
 def mask_loss(logp, target_lens, targets):
     """
-    logp: list of torch tensors, seq x batch x dim
+    logp: list of torch tensors, seq x batch x hdim
     target_lens: list of target lens
     targets: batch x seq
     """
-    logp = torch.stack(logp).transpose(0, 1) # b x s x d
+    logp = torch.stack(logp).transpose(0, 1) # after operation, b x s x d
     loss = 0
     for i in range(len(target_lens)):
         # the first one is SOS, so skip it
@@ -75,7 +71,7 @@ def train(data):
     s2s = Seq2Seq.Seq2Seq(args)
     if args.use_cuda:
         s2s = s2s.cuda()
-    s2s_opt = torch.optim.Adam(s2s.parameters(), lr=args.learning_rate,
+    s2s_opt = torch.optim.Adam(s2s.parameters(), lr = args.learning_rate,
             weight_decay = args.l2)
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     print(s2s)
@@ -104,7 +100,8 @@ def train(data):
             if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
                     time.time() - ts, loss.data[0]))
-                summarize(s2s, inputs, input_lens, targets, target_lens)
+                summarize(s2s, inputs, input_lens, targets, target_lens,
+                        beam_search = False)
                 sys.stdout.flush()
         train_loss = epoch_loss / sum_len
 
@@ -119,13 +116,11 @@ def train(data):
             epoch_loss += loss.data[0]
         print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
                 % (ep + 1, train_loss, epoch_loss / sum_len, batch_idx, time.time() - ts))
-        # save model every epoch
         model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
     logp, list_symbols = s2s.summarize(inputs, input_lens, beam_search)
-    # print(logp)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
 
     def idxes2sent(idxes):
@@ -147,24 +142,11 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         hyps[decode_approach].append(prediction)
         refs[decode_approach].append(truth)
         
-        # score = rouge.get_scores(prediction, truth)
-        # score = rouge([prediction], [truth])
         print("dc:", decode_approach)
         print("sp:", prediction)
         print("gt:", truth)
-        
-        # print("Evaluation:", score)
-        # for k, v in score.items():
-        #     print("- {}: {}".format(k, v))
         print(80 * '-')
         
-# def debug_args(args):
-#     logging.info('Parameters received:')
-#     for param in vars(args):
-#         value = getattr(param, arg)
-#         logging.info('* {} = {}'.format(param, value))
-
-
 def test(model_path, testset, is_text=True):
     
     def vectorize(raw_data):
@@ -184,28 +166,16 @@ def test(model_path, testset, is_text=True):
     if is_text:
         testset = vectorize(testset)
     
-    # mini-batch test mode
-    # sort lengths array in decreasing order
-    # data = sorted(testset, key = lambda x: len(x[2]), reverse = True)
-    # inputs, targets = [], []
-    # input_lens = [len(x[2]) for x in data]
-    # target_lens= [len(x[1]) for x in data]
-    # max_input_len = max(input_lens)
-    # max_target_len = max(target_lens)
-    # for _, headline, body in data:
-    #     inputs.append(pad_seq(body, max_input_len))
-    #     targets.append(pad_seq(headline, max_target_len))
-    
     for _, headline, body in testset:
         inputs = torch.LongTensor([body])
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
-        summarize(s2s, inputs, [len(body)], targets, [len(headline)])
+        summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
         
     rouge = Rouge()
-    for decode_way in ["Greedy Search", "Beam Search"]:
-        print("Decode Approach: {}".format(decode_way))
-        avg_score = rouge.get_scores(hyps[decode_way], refs[decode_way], avg=True)
+    for decode_approach in ["Greedy Search", "Beam Search"]:
+        print("Decode Approach: {}".format(decode_approach))
+        avg_score = rouge.get_scores(hyps[decode_approach], refs[decode_approach], avg=True)
         for metric, f1_prec_recl in avg_score.items():
             print("{}: {}".format(metric, f1_prec_recl))
         
@@ -219,6 +189,7 @@ def vec2text(test_size=500):
     return data_text
 
 def vec2text_from_full(test_size=500):
+    # TODO by haoming, parameterize the path
     idx2word_full = pickle.load(open(args.save_path + 'nyt/idx2word_full.pkl', 'rb'))
     data = pickle.load(open(args.save_path + 'nyt/nyt_eng_200912.pkl', 'rb'))[:test_size]
     data_text = []
@@ -235,10 +206,6 @@ if __name__ == "__main__":
             "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/haomingc/1001Nights/")
-    # argparser.add_argument('--vecdata', type=str, default=
-    #         "/pylon5/ci560ip/bchen5/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
-    # argparser.add_argument('--save_path', type=str, default=
-    #         "/pylon5/ci560ip/bchen5/1001Nights/")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
     argparser.add_argument('--model_fpat', type = str, default="model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
@@ -259,6 +226,8 @@ if __name__ == "__main__":
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
         print('- {} = {}'.format(k, v))
+    # There are two types of data, vecdata already transforms the word to idx,
+    # replace word OOV with idx of UNK; the other is raw text.
     vecdata = pickle.load(open(args.vecdata, "rb"))
     word2idx = vecdata["word2idx"]
     idx2word = vecdata["idx2word"]
