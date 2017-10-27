@@ -177,7 +177,7 @@ def test(model_path, testset, is_text=True):
         print("Decode Approach: {}".format(decode_approach))
         avg_score = rouge.get_scores(hyps[decode_approach], refs[decode_approach], avg=True)
         for metric, f1_prec_recl in avg_score.items():
-            print("{}: {}".format(metric, f1_prec_recl))
+            print("%s: %.4f" % (metric, f1_prec_recl))
         
 def vec2text(test_size=500):
     data = vecdata["text_vecs"][:test_size]
