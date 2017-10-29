@@ -20,4 +20,4 @@
 module load gcc-4.9.2
 echo $HOSTNAME
 echo "Running on cpu"
-python main.py
+python main.py --mode train

@@ -69,7 +69,8 @@ class FileReader:
                 # discard document with empty headline or body
                 if len(headline) > 0 and len(body) > 0:
                     for w in headline + body:
-                        self.vocab[w] = self.vocab.get(w, 0) + 1
+                        if self.i2w_full[w] not in [UNK, NUM]:
+                            self.vocab[w] = self.vocab.get(w, 0) + 1
                     self.docs.append(doc)
     
     def parse_doc(self, content):
@@ -118,8 +119,8 @@ class FileReader:
             return ret 
              
         logging.info('--- Extracting training data from standard Gigawords ---')
-        f_title = filter(lambda x: 'title' in x, self.filenames)[0]
-        f_body = filter(lambda x: 'article' in x, self.filenames)[0]
+        f_title = filter(lambda x: 'title' in x, self.filenames).__next__()
+        f_body = filter(lambda x: 'article' in x, self.filenames).__next__()
         titles = open(f_title, 'r').readlines()
         bodies = open(f_body, 'r').readlines()   
         docs = []
@@ -168,8 +169,8 @@ class FileReader:
         return None
     
     def gen_docs_from_compressed_file(self):
-        self.read_docs()
         self.i2w_full = pickle.load(open(args.index_path, 'rb'))
+        self.read_docs()
         self.build_index()
         logging.info("--- Vectorizing training data ---")
         vec_data = []
@@ -178,12 +179,12 @@ class FileReader:
                 logging.info('--- - Vectoring {} out of {} docs ---'.format(idx, len(self.docs)))
             docid, headline, body = doc
             body_vec = self.vectorize_compressed(body)
-            headline_vec = self.vectorize_compressed(headline)
+            headline_vec = self.vectorize_compressed(headline)      
             vec_data.append((docid, headline_vec, body_vec))
             
         logging.info("--- Training data ({} docs) generation complete ---".format(len(self.docs)))
         self.data['text_vecs'] = vec_data
-        suffix = args.time_interval if args.source == 'xml' else 'std_all'
+        suffix = args.time_interval if args.source == 'xml' else ('std_v%d' % args.vocab_size)
         vec_path = '{}vec_data_{}.pkl'.format(args.save_path, suffix)
         pickle.dump(self.data, open(vec_path, "wb"))
         logging.info('--- Vectorized documents saved in {} ---'.format(vec_path))
