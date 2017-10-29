@@ -7,7 +7,8 @@ from torch.autograd import Variable
 import heapq
 
 class DecoderRNN(nn.Module):
-    def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio):
+    def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio,
+            dropout):
         super(DecoderRNN, self).__init__()
         self.nlayers = nlayers
         self.output_size = vocab_size
@@ -15,9 +16,10 @@ class DecoderRNN(nn.Module):
         self.teach_ratio = teach_ratio
 
         self.emb = emb
+        # self.dropout = nn.Dropout(dropout)
         emb_size = self.emb.weight.size(1)
         self.rnn = nn.GRU(input_size=emb_size, hidden_size = hidden_size,
-                num_layers = nlayers, batch_first = True)
+                dropout = dropout, num_layers = nlayers, batch_first = True)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, target, encoder_hidden):
@@ -29,6 +31,7 @@ class DecoderRNN(nn.Module):
         batch_output = []
 
         for t in range(1, max_seq_len):
+            # input_emb = self.dropout(self.emb(batch_input).unsqueeze(1)) # b x 1 x hdim
             input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
             rnn_output, h = self.rnn(input_emb, h)
             xout = self.out(rnn_output).squeeze(1)
@@ -53,7 +56,8 @@ class DecoderRNN(nn.Module):
         batch_symbol = [batch_input]
 
         for t in range(1, max_seq_len):
-            input_emb = self.emb(batch_input).unsqueeze(1)
+            # input_emb = self.dropout(self.emb(batch_input).unsqueeze(1)) # b x 1 x hdim
+            input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
             rnn_output, h = self.rnn(input_emb, h)
             xout = self.out(rnn_output).squeeze(1)
             logp = F.log_softmax(xout)
@@ -78,6 +82,7 @@ class DecoderRNN(nn.Module):
 
             inp = Variable(torch.Tensor.long(torch.zeros(1)).fill_(last_word.item()))
             input_emb = self.emb(inp).unsqueeze(1)
+            # input_emb = self.dropout(self.emb(inp).unsqueeze(1))
             rnn_output, h = self.rnn(input_emb, h)
             xout = self.out(rnn_output).squeeze(1)
             logp = F.log_softmax(xout)

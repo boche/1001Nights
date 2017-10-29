@@ -84,6 +84,7 @@ def train(data):
         batch_idx = 0
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
+        s2s.train(True)
         for inputs, targets, input_lens, target_lens in train_data:
             if args.use_cuda:
                 targets = targets.cuda()
@@ -105,6 +106,7 @@ def train(data):
                 sys.stdout.flush()
         train_loss = epoch_loss / sum_len
 
+        s2s.train(False)
         epoch_loss, sum_len = 0, 0
         for inputs, targets, input_lens, target_lens in test_data:
             if args.use_cuda:
@@ -161,6 +163,7 @@ def test(model_path, testset, is_text=True):
     s2s = torch.load(model_path, map_location=lambda storage, loc: storage)
     # switch to CPU for testing 
     s2s.use_cuda = False   
+    s2s.train(False)
     
     # transfrom into indice representation for testing 
     if is_text:
@@ -210,7 +213,7 @@ if __name__ == "__main__":
     argparser.add_argument('--model_fpat', type = str, default="model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=32)
+    argparser.add_argument('--batch_size', type=int, default=64)
     argparser.add_argument('--emb_size', type=int, default=128)
     argparser.add_argument('--hidden_size', type=int, default=128)
     argparser.add_argument('--vocab_size', type=int, default=50000)
@@ -220,8 +223,9 @@ if __name__ == "__main__":
     argparser.add_argument('--max_text_len', type=int, default=128)
     argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=0.5)
+    argparser.add_argument('--dropout', type=float, default=0.1)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
-    argparser.add_argument('--l2', type=float, default=0.01)
+    argparser.add_argument('--l2', type=float, default=0)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
