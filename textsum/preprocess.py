@@ -1,5 +1,6 @@
 # coding: utf-8
 
+
 import sys
 import time
 import pickle
@@ -15,6 +16,7 @@ import xml.etree.ElementTree as ET
 class FileReader:
     def __init__(self, files):
         self.filenames = files
+        self.data = {}
         self.doc_cnt = 0
         self.docs = []
         self.vocab = {}
@@ -48,14 +50,14 @@ class FileReader:
         word_cnt = word_cnt[:args.vocab_size]        
         top_words = list(map(lambda x: self.i2w_full[x[0]], word_cnt))
         
-        for word in [SOS, EOS, UNK]:
+        for word in [SOS, EOS, UNK, NUM]:
             self.idx2word.append(word)
             self.word2idx[word] = len(self.word2idx)
         for word in top_words:
             self.idx2word.append(word)
             self.word2idx[word] = len(self.word2idx)
-        # self.train_data['word2idx'] = self.word2idx
-        # self.train_data['idx2word'] = self.idx2word
+        self.data['word2idx'] = self.word2idx
+        self.data['idx2word'] = self.idx2word
         
     def read_docs(self):
         logging.info("--- Reading documents from compressed files ---")
@@ -67,7 +69,8 @@ class FileReader:
                 # discard document with empty headline or body
                 if len(headline) > 0 and len(body) > 0:
                     for w in headline + body:
-                        self.vocab[w] = self.vocab.get(w, 0) + 1
+                        if self.i2w_full[w] not in [UNK, NUM]:
+                            self.vocab[w] = self.vocab.get(w, 0) + 1
                     self.docs.append(doc)
     
     def parse_doc(self, content):
@@ -89,11 +92,56 @@ class FileReader:
     
     def gen_docs(self):
         if args.mode == 'compress':
-            return self.gen_compress_docs()
+            if args.source == 'xml':
+                self.gen_compress_docs_from_xml()
+            if args.source == 'standard':
+                self.gen_compress_docs_from_std()
+
+            i2w_path = '{}idx2word_full.pkl'.format(args.save_path)
+            pickle.dump(self.idx2word, open(i2w_path, 'wb'))
+            logging.info('--- Finish extracting {} documents ---'.format(self.doc_cnt))        
+            logging.info('--- Extracted documents saved in {} ---'.format(args.save_path))
+            logging.info('--- Format: list[tuple(docid, headline_vec, body_vec)] ---')
+        
         if args.mode == 'extract':
             return self.gen_docs_from_compressed_file()
-    
-    def gen_compress_docs(self):
+
+    def gen_compress_docs_from_std(self):
+        
+        def sp_token_transform(text):
+            ret = []
+            for w in text:
+                if '#' in w:
+                    w = NUM
+                if w == '<unk>':
+                    w = UNK
+                ret.append(w)
+            return ret 
+             
+        logging.info('--- Extracting training data from standard Gigawords ---')
+        f_title = filter(lambda x: 'title' in x, self.filenames).__next__()
+        f_body = filter(lambda x: 'article' in x, self.filenames).__next__()
+        titles = open(f_title, 'r').readlines()
+        bodies = open(f_body, 'r').readlines()   
+        docs = []
+
+        for docid, (title, body) in enumerate(zip(titles, bodies)):
+            if docid % 1e5 == 0:
+                logging.info('--- - {} out of {} docs ---'.format(docid, len(titles)))
+            title, body = title.strip().split(), body.strip().split()
+            title, body = sp_token_transform(title), sp_token_transform(body)
+            title_vec = self.vectorize_raw(title)
+            body_vec = self.vectorize_raw(body)
+            docs.append((docid, title_vec, body_vec))
+            
+        f_name = args.save_path.split('/')[-2] + '_data'
+        self.doc_cnt = len(docs)
+        logging.info('--- Saving file: {} ---'.format(f_name))    
+        pickle.dump(docs, open("{}.pkl".format(args.save_path + f_name), "wb"))
+        
+        return None
+
+    def gen_compress_docs_from_xml(self):
         logging.info('--- Extracting documents by month ---')  
         for filename in self.filenames:
             docs, content = [], ""
@@ -113,41 +161,35 @@ class FileReader:
                         # headline_rev = list(map(lambda x:self.idx2word[x], headline_vec))
                         # assert headline_rev == headline
             f.close()
-            
             # save one month's text data into pickle 
             volume = filename.split('/')[-1].replace('.xml.gz', '')   
             logging.info('--- Saving file: {} ---'.format(volume))        
             pickle.dump(docs, open("{}.pkl".format(args.save_path + volume), "wb"))
         
-        i2w_path = '{}idx2word_full.pkl'.format(args.save_path)
-        pickle.dump(self.idx2word, open(i2w_path, 'wb'))
-        logging.info('--- Finish extracting {} documents ---'.format(self.doc_cnt))        
-        logging.info('--- Extracted documents saved in {} ---'.format(args.save_path))
-        logging.info('--- Format: list[tuple(docid, headline_vec, body_vec)] ---')
         return None
     
     def gen_docs_from_compressed_file(self):
-        self.read_docs()
         self.i2w_full = pickle.load(open(args.index_path, 'rb'))
+        self.read_docs()
         self.build_index()
         logging.info("--- Vectorizing training data ---")
         vec_data = []
         for idx, doc in enumerate(self.docs):
-            if idx % 1000 == 0:
+            if idx % 1e5 == 0:
                 logging.info('--- - Vectoring {} out of {} docs ---'.format(idx, len(self.docs)))
             docid, headline, body = doc
             body_vec = self.vectorize_compressed(body)
-            headline_vec = self.vectorize_compressed(headline)
+            headline_vec = self.vectorize_compressed(headline)      
             vec_data.append((docid, headline_vec, body_vec))
             
         logging.info("--- Training data ({} docs) generation complete ---".format(len(self.docs)))
+        self.data['text_vecs'] = vec_data
+        suffix = args.time_interval if args.source == 'xml' else ('std_v%d' % args.vocab_size)
+        vec_path = '{}vec_data_{}.pkl'.format(args.save_path, suffix)
+        pickle.dump(self.data, open(vec_path, "wb"))
+        logging.info('--- Vectorized documents saved in {} ---'.format(vec_path))
+        logging.info('--- Format: dict{text_vecs, word2idx, idx2word} ---')
         return vec_data
-        # self.train_data['text_vecs'] = vec_data
-        # vec_path = '{}vec_data_{}.pkl'.format(args.save_path, args.time_interval)
-        # pickle.dump(self.train_data, open(vec_path, "wb"))
-        # logging.info('--- Vectorized documents saved in {} ---'.format(vec_path))
-        # logging.info('--- Format: dict{text_vecs, vocab, word2idx, idx2word} ---')
-        
 
 def validate_time():
     start, end = list(map(lambda x: int(x), args.time_interval.split('-')))
@@ -161,45 +203,59 @@ def validate_time():
         
 def filter_files(pattern):
     candidates, files = glob.glob(pattern), None
-    if args.mode == 'compress':
+    if args.mode == 'compress' or args.source == 'standard':
         files = candidates
-    if args.mode == 'extract':
+    elif args.mode == 'extract':
         s, e = validate_time()
         files = list(filter(lambda x: s <= int(x[-10:-4]) <= e, candidates))
+    logging.info('--- Found {} files ---'.format(len(files)))
     # print(files)
-    logging.info('--- Found {} files (months) ---'.format(len(files)))
     return files
+
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
+    
+    # # use data in self-defined format in '/nyt/'
+    # argparser.add_argument('--raw_data', type=str, default=
+    #         "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_20101*")
+    # argparser.add_argument('--save_path', type=str, default=
+    #         "/data/ASR5/haomingc/1001Nights/nyt/")
+    # argparser.add_argument('--compressed_data', type=str, default=
+    #     "/data/ASR5/haomingc/1001Nights/nyt/nyt_eng_*")
+    # argparser.add_argument('--index_path', type=str, default=
+    #         "/data/ASR5/haomingc/1001Nights/nyt/idx2word_full.pkl")
+    
+    # use generated data in '/standard_giga' for fair comparison among papers
     argparser.add_argument('--raw_data', type=str, default=
-            "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/nyt_eng_20101*")
+            "/data/ASR5/haomingc/1001Nights/standard_giga/train/*.txt")
     argparser.add_argument('--save_path', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/nyt/")
+            "/data/ASR5/haomingc/1001Nights/standard_giga/train/")
     argparser.add_argument('--compressed_data', type=str, default=
-        "/data/ASR5/haomingc/1001Nights/nyt/nyt_eng_*")
+            "/data/ASR5/haomingc/1001Nights/standard_giga/train/*_data.pkl")
     argparser.add_argument('--index_path', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/nyt/idx2word_full.pkl")
+            "/data/ASR5/haomingc/1001Nights/standard_giga/train/idx2word_full.pkl")
+    
+    argparser.add_argument('--source', type=str, choices=['xml', 'standard'], default='standard')   
     argparser.add_argument('--mode', type=str, choices=['compress', 'extract'], help=
-            "[compress] docs from raw XML or [extract] docs for training", default='extract')
+            "[compress] docs from raw XML or [extract] docs for training", default='compress')
     argparser.add_argument('--time_interval', type=str, default="201001-201012", help=
             "format: start_month-end_month, inclusive, range=[199407, 201012]")    
-    # argparser.add_argument('--time_interval', type=str, default="201001-201012", help=
-    #         "format: start_month-end_month, inclusive, range=[199407, 201012]")
     argparser.add_argument('--vocab_size', type=int, default=50000)
-    # argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_body_len', type=int, default=200)
     args = argparser.parse_args()
     logging.basicConfig(level = 'DEBUG', format= 
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
-    pattern = args.compressed_data 
+    pattern = None 
     if args.mode == 'compress':
         pattern = args.raw_data
+    if args.mode == 'extract':
+        pattern = args.compressed_data 
+        
     files = filter_files(pattern)
     reader = FileReader(files)
     docs = reader.gen_docs()
-    # TO DO: API to fetch data from main.py
     
     
     

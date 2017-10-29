@@ -25,4 +25,4 @@
 #echo "Device = $CUDA_VISIBLE_DEVICES"
 #python main.py --build_vocab
 #python main.py --build_emb
-python main.py --use_cuda
+python main.py --mode train --use_cuda

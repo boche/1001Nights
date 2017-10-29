@@ -181,15 +181,6 @@ def test(model_path, testset, is_text=True):
         avg_score = rouge.get_scores(hyps[decode_approach], refs[decode_approach], avg=True)
         for metric, f1_prec_recl in avg_score.items():
             print("%s: %.4f" % (metric, f1_prec_recl))
-        
-def vec2text(test_size=500):
-    data = vecdata["text_vecs"][:test_size]
-    data_text = []
-    for docid, headline, body in data:
-        raw_headline = [idx2word[w] for w in headline]
-        raw_body = [idx2word[w] for w in body]
-        data_text.append((docid, raw_headline, raw_body))
-    return data_text
 
 def vec2text_from_full(test_size=500):
     # TODO by haoming, parameterize the path
@@ -206,7 +197,9 @@ def vec2text_from_full(test_size=500):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--vecdata', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
+            # "/data/ASR5/haomingc/1001Nights/train_data_nyt_eng_2010_v50000.pkl")
+            "/data/ASR5/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+    
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/haomingc/1001Nights/")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
@@ -245,6 +238,5 @@ if __name__ == "__main__":
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
         model_path = args.save_path + args.model_name
-        # testset = vec2text()
         testset = vec2text_from_full()
         test(model_path, testset)
