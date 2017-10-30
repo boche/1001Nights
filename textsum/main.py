@@ -201,10 +201,10 @@ if __name__ == "__main__":
             "/data/ASR5/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
     argparser.add_argument('--save_path', type=str, default=
             "/data/ASR5/haomingc/1001Nights/")
-    argparser.add_argument('--test_fpath', tupe=str, default=
-            '/data/ASR5/haomingc/1001Nights/standard_giga/test/test_data.pkl')
+    argparser.add_argument('--test_fpath', type=str, default=
+            "/data/ASR5/haomingc/1001Nights/standard_giga/test/test_data.pkl")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
-    argparser.add_argument('--data_src', type=str, choices=['xml', 'std', default='std'])
+    argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
     argparser.add_argument('--model_fpat', type=str, default="model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
@@ -238,7 +238,7 @@ if __name__ == "__main__":
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
-        model_path = args.save_path + args.model_name
+        model_path = args.save_path + "model/" + args.model_name
         testset = None
         if args.data_src == 'xml':
             testset = vec2text_from_full() 
