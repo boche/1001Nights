@@ -11,14 +11,15 @@ class Seq2Seq(nn.Module):
         self.nlayers = args.nlayers
         self.hidden_size = args.hidden_size
         self.teach_ratio = args.teach_ratio
+        self.dropout = args.dropout
         self.max_title_len = args.max_title_len
 
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
         self.encoder = EncoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers)
+                self.nlayers, self.dropout)
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers, self.teach_ratio)
+                self.nlayers, self.teach_ratio, self.dropout)
 
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
