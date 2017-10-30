@@ -123,19 +123,23 @@ class FileReader:
         f_body = filter(lambda x: 'article' in x, self.filenames).__next__()
         titles = open(f_title, 'r').readlines()
         bodies = open(f_body, 'r').readlines()   
-        docs = []
+        docs, data_mode = [], args.save_path.split('/')[-2]
 
         for docid, (title, body) in enumerate(zip(titles, bodies)):
             if docid % 1e5 == 0:
                 logging.info('--- - {} out of {} docs ---'.format(docid, len(titles)))
             title, body = title.strip().split(), body.strip().split()
             title, body = sp_token_transform(title), sp_token_transform(body)
-            title_vec = self.vectorize_raw(title)
-            body_vec = self.vectorize_raw(body)
-            docs.append((docid, title_vec, body_vec))
             
-        f_name = args.save_path.split('/')[-2] + '_data'
+            if data_mode == 'test':             # for test data only (textual form)
+                docs.append((docid, title, body))  
+            else:                              # for train/validate data (indexed form)
+                title_vec = self.vectorize_raw(title)
+                body_vec = self.vectorize_raw(body)
+                docs.append((docid, title_vec, body_vec))
+        
         self.doc_cnt = len(docs)
+        f_name = data_mode + '_data'
         logging.info('--- Saving file: {} ---'.format(f_name))    
         pickle.dump(docs, open("{}.pkl".format(args.save_path + f_name), "wb"))
         
