@@ -65,7 +65,7 @@ def mask_loss(logp, target_lens, targets):
 def train(data):
     nbatch = len(data)
     random.shuffle(data)
-    ntest = nbatch // 100
+    ntest = nbatch // 50
     train_data = data[:-ntest]
     test_data = data[-ntest:]
     s2s = Seq2Seq.Seq2Seq(args)
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     argparser.add_argument('--max_text_len', type=int, default=32)
     argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=1)
-    argparser.add_argument('--dropout', type=float, default=0.1)
+    argparser.add_argument('--dropout', type=float, default=0.2)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.01)
 
