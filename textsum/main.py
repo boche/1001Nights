@@ -85,7 +85,7 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
-        for inputs, targets, input_lens, target_lens in train_data[:4000]:
+        for inputs, targets, input_lens, target_lens in train_data[:5000]:
             if args.use_cuda:
                 targets = targets.cuda()
                 inputs = inputs.cuda()
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     argparser.add_argument('--batch_size', type=int, default=128)
     argparser.add_argument('--emb_size', type=int, default=128)
     argparser.add_argument('--hidden_size', type=int, default=128)
-    argparser.add_argument('--nlayers', type=int, default=3)
+    argparser.add_argument('--nlayers', type=int, default=2)
     argparser.add_argument('--nepochs', type=int, default=50)
     argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=32)
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.2)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
-    argparser.add_argument('--l2', type=float, default=0.01)
+    argparser.add_argument('--l2', type=float, default=0.00)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
