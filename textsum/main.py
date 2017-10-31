@@ -184,7 +184,6 @@ def test(model_path, testset, is_text=True):
             print("%s: %.4f" % (metric, f1_prec_recl))
 
 def vec2text_from_full(test_size=500):
-    # TODO by haoming, parameterize the path
     idx2word_full = pickle.load(open(args.save_path + 'nyt/idx2word_full.pkl', 'rb'))
     data = pickle.load(open(args.save_path + 'nyt/nyt_eng_200912.pkl', 'rb'))[:test_size]
     data_text = []
@@ -198,14 +197,14 @@ def vec2text_from_full(test_size=500):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--vecdata', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
     argparser.add_argument('--save_path', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/")
+            "/pylon5/ir3l68p/haomingc/1001Nights/")
     argparser.add_argument('--test_fpath', type=str, default=
-            "/data/ASR5/haomingc/1001Nights/standard_giga/test/test_data.pkl")
+            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/test/test_data.pkl")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
     argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
-    argparser.add_argument('--model_fpat', type=str, default="model/s2s-s%s-e%02d.model")
+    argparser.add_argument('--model_fpat', type=str, default="saved_model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
     argparser.add_argument('--batch_size', type=int, default=128)
@@ -238,7 +237,7 @@ if __name__ == "__main__":
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
-        model_path = args.save_path + "model/" + args.model_name
+        model_path = args.save_path + "saved_model/" + args.model_name
         testset = None
         if args.data_src == 'xml':
             testset = vec2text_from_full() 
