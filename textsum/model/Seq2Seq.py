@@ -23,7 +23,7 @@ class Seq2Seq(nn.Module):
 
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
-        logp = self.decoder(targets, encoder_hidden)
+        logp = self.decoder(targets, encoder_hidden, encoder_output, input_lens)
         return logp
 
     def summarize(self, inputs, input_lens, beam_search=True):
@@ -31,8 +31,8 @@ class Seq2Seq(nn.Module):
         logp, symbols = None, None
         if beam_search:
             logp, symbols = self.decoder.summarize_bs(encoder_hidden,
-                    self.max_title_len)
+                    self.max_title_len, encoder_output, input_lens)
         else:
             logp, symbols = self.decoder.summarize(encoder_hidden,
-                    self.max_title_len)
+                    self.max_title_len, encoder_output, input_lens)
         return logp, symbols
