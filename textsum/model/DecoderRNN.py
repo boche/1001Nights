@@ -32,18 +32,18 @@ class DecoderRNN(nn.Module):
             self.attn_model = attn_model
             self.attn = Attn(attn_model, hidden_size)
             
-    def getAttnOutput(self, batch_input, context, h, encoder_output, input_lens):
+    def getAttnOutput(self, batch_input, last_output, h, encoder_output, input_lens):
         input_emb = self.emb(batch_input)
-        concat_input = torch.cat([input_emb, context], 1).unsqueeze(1)
+        concat_input = torch.cat([input_emb, last_output], 1).unsqueeze(1)
         rnn_output, h = self.rnn(concat_input, h)
         attn_weights = self.attn(rnn_output, encoder_output, input_lens)
-        context = attn_weights.bmm(encoder_output).squeeze(1)
+        context = attn_weights.bmm(encoder_output)
 
         # Final output layer (next word prediction) using the RNN hidden state and context vector
-        concat_input = torch.cat((rnn_output.squeeze(1), context), 1)
+        concat_input = torch.cat((rnn_output, context), 2).squeeze(1)
         concat_output = F.tanh(self.concat(concat_input))
         logp = F.log_softmax(self.out(concat_output))
-        return logp, h, context      
+        return logp, h, concat_output      
 
     def forward(self, target, encoder_hidden, encoder_output, input_lens):
         batch_size, max_seq_len = target.size()
@@ -54,10 +54,10 @@ class DecoderRNN(nn.Module):
         batch_output = []
         
         if self.attn_model != 'none':
-            context = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
+            last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
             use_cuda = next(self.parameters()).data.is_cuda
             if use_cuda:
-                context = context.cuda()
+                last_output = last_output.cuda()
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
@@ -67,7 +67,7 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, context = self.getAttnOutput(batch_input, context, h, encoder_output, input_lens)
+                logp, h, last_output = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
             batch_output.append(logp)
 
             if use_teacher_forcing:
@@ -86,10 +86,10 @@ class DecoderRNN(nn.Module):
             batch_input = batch_input.cuda()
         batch_output = []
         batch_symbol = [batch_input]
-        context = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
+        last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
-            context = context.cuda()
+            last_output = last_output.cuda()
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
@@ -99,7 +99,7 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, context = self.getAttnOutput(batch_input, context, h, encoder_output, input_lens)
+                logp, h, last_output = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
             batch_output.append(logp)
 
             _, batch_input = torch.max(logp, 1, keepdim=False)
@@ -109,14 +109,14 @@ class DecoderRNN(nn.Module):
     def summarize_bs(self, encoder_hidden, max_seq_len, encoder_output, input_lens, beam_size=4):
         h = encoder_hidden
         
-        context = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
+        last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
-            context = context.cuda()
-        last_candidates = [(0.0 ,(np.int64(0), [np.int64(0)], [0.0], h, context))]
+            last_output = last_output.cuda()
+        last_candidates = [(0.0 ,(np.int64(0), [np.int64(0)], [0.0], h, last_output))]
         
 
-        def find_candidates(last_logp, last_word, prev_words, outputs, h, context):
+        def find_candidates(last_logp, last_word, prev_words, outputs, h, last_output):
             if last_word.item() == 1: #EOS
                 while len(final_candidates) >= beam_size and last_logp > final_candidates[0][0]:
                     heapq.heappop(final_candidates)
@@ -134,7 +134,7 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, context = self.getAttnOutput(batch_input, context, h, encoder_output, input_lens)
+                logp, h, last_output = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
             res, ind = logp.topk(beam_size)
             for i in range(ind.size(1)):
                 word = ind[0][i]
@@ -145,7 +145,7 @@ class DecoderRNN(nn.Module):
                     heapq.heappop(partial_candidates)
 
                 if len(partial_candidates) + 1 <= beam_size:
-                    heapq.heappush(partial_candidates, (current_logp, (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], h, context)))
+                    heapq.heappush(partial_candidates, (current_logp, (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], h, last_output)))
 
         
         final_candidates = []
@@ -154,9 +154,9 @@ class DecoderRNN(nn.Module):
         while last_candidates and current_depth < max_seq_len:
             current_depth += 1
             partial_candidates = []
-            for last_logp, (last_word, prev_words, outputs, h, context) in last_candidates:
+            for last_logp, (last_word, prev_words, outputs, h, last_output) in last_candidates:
                 # print(last_logp, last_word, prev_words)
-                find_candidates(last_logp, last_word, prev_words, outputs, h, context)
+                find_candidates(last_logp, last_word, prev_words, outputs, h, last_output)
             last_candidates = partial_candidates
 
         if final_candidates:
