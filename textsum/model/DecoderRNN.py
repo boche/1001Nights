@@ -135,7 +135,7 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, last_output = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
+                logp, h, last_output = self.getAttnOutput(inp, last_output, h, encoder_output, input_lens)
             res, ind = logp.topk(beam_size)
             for i in range(ind.size(1)):
                 word = ind[0][i]
