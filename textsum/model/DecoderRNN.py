@@ -84,8 +84,7 @@ class DecoderRNN(nn.Module):
         use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
             batch_input = batch_input.cuda()
-        batch_output = []
-        batch_attn = []
+        batch_output, batch_attn = [], []
         batch_symbol = [batch_input]
         last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         use_cuda = next(self.parameters()).data.is_cuda
@@ -142,7 +141,7 @@ class DecoderRNN(nn.Module):
             res, ind = logp.topk(beam_size)
             for i in range(ind.size(1)):
                 word = ind[0][i]
-                # if word.data.numpy()[0] == 2:
+                # if word.data.numpy()[0] == 2: # skip if it's UNK
                 #    continue
                 current_logp = last_logp + logp.data.numpy()[0][word.data.numpy()[0]]
                 while len(partial_candidates) + 1 > beam_size and current_logp > partial_candidates[0][0]:
