@@ -64,7 +64,6 @@ def mask_loss(logp, target_lens, targets):
 
 def train(data):
     nbatch = len(data)
-    random.shuffle(data)
     ntest = nbatch // 50
     train_data = data[:-ntest]
     test_data = data[-ntest:]
@@ -211,13 +210,13 @@ if __name__ == "__main__":
     argparser.add_argument('--emb_size', type=int, default=128)
     argparser.add_argument('--hidden_size', type=int, default=128)
     argparser.add_argument('--nlayers', type=int, default=2)
-    argparser.add_argument('--nepochs', type=int, default=50)
+    argparser.add_argument('--nepochs', type=int, default=30)
     argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=32)
     argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=1)
-    argparser.add_argument('--dropout', type=float, default=0.2)
-    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='general')
+    argparser.add_argument('--dropout', type=float, default=0.0)
+    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.00)
 
@@ -238,7 +237,7 @@ if __name__ == "__main__":
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
-        model_path = args.save_path + "saved_model/" + args.model_name
+        model_path = args.save_path + args.model_name
         testset = None
         if args.data_src == 'xml':
             testset = vec2text_from_full() 

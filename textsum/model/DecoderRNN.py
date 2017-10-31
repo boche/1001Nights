@@ -108,6 +108,7 @@ class DecoderRNN(nn.Module):
     
     def summarize_bs(self, encoder_hidden, max_seq_len, encoder_output, input_lens, beam_size=4):
         h = encoder_hidden
+        batch_size = encoder_hidden.size(1)
         
         last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         use_cuda = next(self.parameters()).data.is_cuda
@@ -145,8 +146,8 @@ class DecoderRNN(nn.Module):
                     heapq.heappop(partial_candidates)
 
                 if len(partial_candidates) + 1 <= beam_size:
-                    heapq.heappush(partial_candidates, (current_logp, (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], h, last_output)))
-
+                    heapq.heappush(partial_candidates, (current_logp,
+                        (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], h, last_output)))
         
         final_candidates = []
 
