@@ -144,10 +144,10 @@ def show_attn(input_text, output_text, gold_text, attn):
     attn = attn.data.cpu().numpy()[:len(output_words) - 1, :]
 
     fig = plt.figure()
-    fig.set_size_inches(8, 6)
+    fig.set_size_inches(8, 5)
     ax = fig.add_subplot(111)
     cax = ax.matshow(attn, cmap='bone')
-    fig.colorbar(cax)
+    fig.colorbar(cax, orientation='horizontal')
 
     # Set up axes
     ax.set_xticklabels(input_words, rotation=90)
