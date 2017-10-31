@@ -36,14 +36,14 @@ class DecoderRNN(nn.Module):
         input_emb = self.emb(batch_input)
         concat_input = torch.cat([input_emb, last_output], 1).unsqueeze(1)
         rnn_output, h = self.rnn(concat_input, h)
-        attn_weights = self.attn(rnn_output, encoder_output, input_lens)
+        attn_weights = self.attn(rnn_output, encoder_output, input_lens) # b x 1 x s
         context = attn_weights.bmm(encoder_output)
 
         # Final output layer (next word prediction) using the RNN hidden state and context vector
         concat_input = torch.cat((rnn_output, context), 2).squeeze(1)
         concat_output = F.tanh(self.concat(concat_input))
         logp = F.log_softmax(self.out(concat_output))
-        return logp, h, concat_output      
+        return logp, h, concat_output, attn_weights
 
     def forward(self, target, encoder_hidden, encoder_output, input_lens):
         batch_size, max_seq_len = target.size()
@@ -67,7 +67,7 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, last_output = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
+                logp, h, last_output, _ = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
             batch_output.append(logp)
 
             if use_teacher_forcing:
@@ -85,6 +85,7 @@ class DecoderRNN(nn.Module):
         if use_cuda:
             batch_input = batch_input.cuda()
         batch_output = []
+        batch_attn = []
         batch_symbol = [batch_input]
         last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         use_cuda = next(self.parameters()).data.is_cuda
@@ -99,12 +100,14 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, last_output = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
+                logp, h, last_output, attn_weights = self.getAttnOutput(
+                        batch_input, last_output, h, encoder_output, input_lens)
+                batch_attn.append(attn_weights.squeeze(1))
             batch_output.append(logp)
 
             _, batch_input = torch.max(logp, 1, keepdim=False)
             batch_symbol.append(batch_input)
-        return batch_output, batch_symbol
+        return batch_output, batch_symbol, batch_attn
     
     def summarize_bs(self, encoder_hidden, max_seq_len, encoder_output, input_lens, beam_size=4):
         h = encoder_hidden
@@ -135,7 +138,7 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, last_output = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
+                logp, h, last_output, _ = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
             res, ind = logp.topk(beam_size)
             for i in range(ind.size(1)):
                 word = ind[0][i]
@@ -167,4 +170,4 @@ class DecoderRNN(nn.Module):
         symbol = []
         for result in result_sent:
             symbol.append(Variable(torch.Tensor.long(torch.zeros(1)).fill_(result.item())))
-        return outputs, symbol
+        return outputs, symbol, None # we don't plot attn for beam search

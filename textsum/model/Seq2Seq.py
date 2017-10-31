@@ -31,9 +31,9 @@ class Seq2Seq(nn.Module):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         logp, symbols = None, None
         if beam_search:
-            logp, symbols = self.decoder.summarize_bs(encoder_hidden,
+            logp, symbols, attns = self.decoder.summarize_bs(encoder_hidden,
                     self.max_title_len, encoder_output, input_lens)
         else:
-            logp, symbols = self.decoder.summarize(encoder_hidden,
+            logp, symbols, attns = self.decoder.summarize(encoder_hidden,
                     self.max_title_len, encoder_output, input_lens)
-        return logp, symbols
+        return logp, symbols, attns

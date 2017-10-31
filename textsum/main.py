@@ -10,6 +10,10 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from model import Seq2Seq
+import matplotlib as mpl
+mpl.use('Agg') #adding this because otherwise plt will fail because of no display
+import matplotlib.ticker as ticker
+import matplotlib.pyplot as plt
 from rouge import Rouge
 
 def pad_seq(seq, max_length):
@@ -120,22 +124,51 @@ def train(data):
         model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
 
+def idxes2sent(idxes):
+    seq = ""
+    for idx in idxes:
+        if idx2word[idx] == SOS:
+            continue
+        if idx2word[idx] == EOS:
+            break
+        seq += idx2word[idx] + " "
+    # some characters may not be printable if not encode by utf-8
+    return seq.encode('utf-8').decode("utf-8") 
+
+def show_attn(input_text, output_text, gold_text, attn):
+    """
+    attn: output_s x input_s
+    """
+    input_words = [''] + input_text.split(' ')[:-1] # last one is empty
+    output_words = [''] + output_text.split(' ')[:-1] + [EOS]
+    attn = attn.data.cpu().numpy()[:len(output_words) - 1, :]
+
+    fig = plt.figure()
+    fig.set_size_inches(8, 6)
+    ax = fig.add_subplot(111)
+    cax = ax.matshow(attn, cmap='bone')
+    fig.colorbar(cax)
+
+    # Set up axes
+    ax.set_xticklabels(input_words, rotation=90)
+    ax.set_yticklabels(output_words)
+
+    # Show label at every tick
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+
+    plt.savefig("%s/figure/attn/%s.png" % (args.save_path, gold_text.replace(" ", "_")), dpi = 200)
+    plt.close()
+
 def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
-    logp, list_symbols = s2s.summarize(inputs, input_lens, beam_search)
+    logp, list_symbols, attns = s2s.summarize(inputs, input_lens, beam_search)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
+    if args.attn_model != 'none':
+        attns = torch.stack(attns).transpose(0, 1) # b x target_s x input_s
 
-    def idxes2sent(idxes):
-        seq = ""
-        for idx in idxes:
-            if idx2word[idx] == SOS:
-                continue
-            if idx2word[idx] == EOS:
-                break
-            seq += idx2word[idx] + " "
-        # some characters may not be printable if not encode by utf-8
-        return seq.encode('utf-8').decode("utf-8") 
-
-    for i in range(min(len(targets), 3)):
+    nsummary = 1 if args.mode == 'train' else len(targets)
+    print('nsummary', nsummary, len(targets))
+    for i in range(min(len(targets), nsummary)):
         symbols = list_symbols[i]
         decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
         text = idxes2sent(inputs[i].cpu().numpy())
@@ -143,6 +176,9 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         truth = idxes2sent(targets[i].cpu().numpy())
         hyps[decode_approach].append(prediction)
         refs[decode_approach].append(truth)
+        if beam_search is False and args.show_attn and args.attn_model != 'none':
+            # only plot if it's not beam search
+            show_attn(text, prediction, truth, attns[i, :, :])
         
         print("text:", text)
         print(decode_approach, ":", prediction)
@@ -150,7 +186,6 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         print(80 * '-')
         
 def test(model_path, testset, is_text=True):
-    
     def vectorize(raw_data):
         data_vec = []
         for data in raw_data:
@@ -216,7 +251,8 @@ if __name__ == "__main__":
     argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
-    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
+    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='dot')
+    argparser.add_argument('--show_attn', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.00)
 
