@@ -163,12 +163,15 @@ def show_attn(input_text, output_text, gold_text, attn):
 def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
     logp, list_symbols, attns = s2s.summarize(inputs, input_lens, beam_search)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
-    if args.attn_model != 'none':
+    if beam_search is False and args.show_attn and args.attn_model != 'none':
         attns = torch.stack(attns).transpose(0, 1) # b x target_s x input_s
 
-    nsummary = 1 if args.mode == 'train' else len(targets)
-    print('nsummary', nsummary, len(targets))
-    for i in range(min(len(targets), nsummary)):
+    for i in range(min(len(targets), 1)):
+        """
+        In train, we want to limit the summarize size for each batch to only 1
+        to save time. In test, the data is prepared so that each batch only has
+        1 instance.
+        """
         symbols = list_symbols[i]
         decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
         text = idxes2sent(inputs[i].cpu().numpy())
