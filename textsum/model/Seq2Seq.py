@@ -14,13 +14,14 @@ class Seq2Seq(nn.Module):
         self.dropout = args.dropout
         self.max_title_len = args.max_title_len
         self.attn_model = args.attn_model
+        self.rnn_model = args.rnn_model
 
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
         self.encoder = EncoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers, self.dropout)
+                self.nlayers, self.dropout, self.rnn_model)
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers, self.teach_ratio, self.dropout, self.attn_model)
+                self.nlayers, self.teach_ratio, self.dropout, self.rnn_model, self.attn_model)
 
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)

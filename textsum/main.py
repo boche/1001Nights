@@ -260,6 +260,7 @@ if __name__ == "__main__":
     argparser.add_argument('--show_attn', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.03)
+    argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='gru')
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
