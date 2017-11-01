@@ -23,11 +23,13 @@ class DecoderRNN(nn.Module):
         # self.dropout = nn.Dropout(dropout)
         emb_size = self.emb.weight.size(1)
         self.out = nn.Linear(self.hidden_size, self.output_size)
+
         rnn_input_size = emb_size if attn_model == 'none' else emb_size + hidden_size
-        self.rnn = nn.GRU(input_size = rnn_input_size, hidden_size = hidden_size,
-                    dropout = dropout, num_layers = nlayers, batch_first = True) \
-                    if rnn_model == 'gru' else \
-                    nn.LSTM(input_size = rnn_input_size, hidden_size = hidden_size,
+        if rnn_model == 'gru':
+            self.rnn = nn.GRU(input_size = rnn_input_size, hidden_size = hidden_size,
+                    dropout = dropout, num_layers = nlayers, batch_first = True)
+        else:
+            self.rnn = nn.LSTM(input_size = rnn_input_size, hidden_size = hidden_size,
                     dropout = dropout, num_layers = nlayers, batch_first = True)
         if self.attn_model != 'none':
             self.concat = nn.Linear(hidden_size * 2, hidden_size)
