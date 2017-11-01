@@ -69,6 +69,7 @@ def mask_loss(logp, target_lens, targets):
 def train(data):
     nbatch = len(data)
     ntest = nbatch // 50
+    identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     random.seed(15213)
     random.shuffle(data)
     train_data = data[:-ntest]
@@ -78,7 +79,6 @@ def train(data):
         s2s = s2s.cuda()
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr = args.learning_rate,
             weight_decay = args.l2)
-    identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     print(s2s)
     for param in s2s.parameters():
         print(param.data.size())
@@ -259,7 +259,7 @@ if __name__ == "__main__":
     argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
     argparser.add_argument('--show_attn', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
-    argparser.add_argument('--l2', type=float, default=0.01)
+    argparser.add_argument('--l2', type=float, default=0.03)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
