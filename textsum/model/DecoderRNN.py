@@ -23,20 +23,13 @@ class DecoderRNN(nn.Module):
         # self.dropout = nn.Dropout(dropout)
         emb_size = self.emb.weight.size(1)
         self.out = nn.Linear(self.hidden_size, self.output_size)
-        if attn_model == 'none':    
-            if rnn_model == 'gru':
-                self.rnn = nn.GRU(input_size=emb_size, hidden_size = hidden_size,
+        rnn_input_size = emb_size if attn_model == 'none' else emb_size + hidden_size
+        self.rnn = nn.GRU(input_size = rnn_input_size, hidden_size = hidden_size,
+                    dropout = dropout, num_layers = nlayers, batch_first = True) \
+                    if rnn_model == 'gru' else \
+                    nn.LSTM(input_size = rnn_input_size, hidden_size = hidden_size,
                     dropout = dropout, num_layers = nlayers, batch_first = True)
-            else:
-                self.rnn = nn.LSTM(input_size=emb_size, hidden_size = hidden_size,
-                    dropout = dropout, num_layers = nlayers, batch_first = True)
-        else:
-            if rnn_model == 'gru': 
-                self.rnn = nn.GRU(input_size=emb_size + hidden_size, hidden_size = hidden_size,
-                    dropout = dropout, num_layers = nlayers, batch_first = True)
-            else:
-                self.rnn = nn.LSTM(input_size=emb_size + hidden_size, hidden_size = hidden_size,
-                    dropout = dropout, num_layers = nlayers, batch_first = True)
+        if self.attn_model != 'none':
             self.concat = nn.Linear(hidden_size * 2, hidden_size)
             self.attn_model = attn_model
             self.attn = Attn(attn_model, hidden_size)
@@ -86,10 +79,7 @@ class DecoderRNN(nn.Module):
         return batch_output
 
     def summarize(self, encoder_hidden, max_seq_len, encoder_output, input_lens):
-        if self.rnn_model == 'gru':
-            batch_size = encoder_hidden.size(1)
-        else:
-            batch_size = encoder_hidden[0].size(1)
+        batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
 
         h = encoder_hidden
         # here it's assuming SOS has index 0
@@ -122,10 +112,7 @@ class DecoderRNN(nn.Module):
         return batch_output, batch_symbol, batch_attn
     
     def summarize_bs(self, encoder_hidden, max_seq_len, encoder_output, input_lens, beam_size=4):
-        if self.rnn_model == 'gru':
-            batch_size = encoder_hidden.size(1)
-        else:
-            batch_size = encoder_hidden[0].size(1)
+        batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
         
         h = encoder_hidden
         last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
