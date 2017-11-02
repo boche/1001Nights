@@ -170,7 +170,7 @@ class DecoderRNN(nn.Module):
         if final_candidates:
             last_logp, result_sent = max(final_candidates)
         else:                     
-            last_logp, (_, result_sent, outputs, _) = max(last_candidates)
+            last_logp, (_, result_sent, outputs, _, _) = max(last_candidates)
         symbol = []
         for result in result_sent:
             symbol.append(Variable(torch.Tensor.long(torch.zeros(1)).fill_(result.item())))
