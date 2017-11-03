@@ -159,7 +159,7 @@ def show_attn(input_text, output_text, gold_text, attn):
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-    plt.savefig("%s/figure/attn/%s.png" % (args.save_path, gold_text.replace(" ", "_")), dpi = 200)
+    plt.savefig("%s/figure/attn/%s.png" % (args.save_path, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
