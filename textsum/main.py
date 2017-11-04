@@ -209,7 +209,9 @@ def test(model_path, testset, is_text=True):
     if is_text:
         testset = vectorize(testset)
     
-    for _, headline, body in testset:
+    random.seed(15213)
+    random.shuffle(testset)
+    for _, headline, body in testset[:10000]:
         inputs = torch.LongTensor([body])
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
