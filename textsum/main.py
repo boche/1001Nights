@@ -190,7 +190,7 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         print("gt:", truth)
         print(80 * '-')
         
-def test(model_path, testset, test_size=10000, is_text=True):
+def test(model_path, testset, is_text=True):
     def vectorize(raw_data):
         data_vec = []
         for data in raw_data:
@@ -211,7 +211,7 @@ def test(model_path, testset, test_size=10000, is_text=True):
     
     random.seed(15213)
     random.shuffle(testset)
-    for _, headline, body in testset[:test_size]:
+    for _, headline, body in testset[:args.test_size]:
         inputs = torch.LongTensor([body])
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
@@ -225,11 +225,11 @@ def test(model_path, testset, test_size=10000, is_text=True):
             s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]), f1_prec_recl.items())))
             print("%s: %s" % (metric, s))
 
-def vec2text_from_full(test_size=500):
+def vec2text_from_full():
     idx2word_full = pickle.load(open(args.save_path + 'nyt/idx2word_full.pkl', 'rb'))
-    data = pickle.load(open(args.save_path + 'nyt/nyt_eng_200912.pkl', 'rb'))[:test_size]
+    data = pickle.load(open(args.save_path + 'nyt/nyt_eng_200912.pkl', 'rb'))
     data_text = []
-    for docid, headline, body in data:
+    for docid, headline, body in data[:args.test_size]:
         if len(headline) > 0 and len(body) > 0:
             raw_headline = [idx2word_full[w] for w in headline]
             raw_body = [idx2word_full[w] for w in body]
@@ -245,6 +245,7 @@ if __name__ == "__main__":
     argparser.add_argument('--test_fpath', type=str, default=
             "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/test/test_data.pkl")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
+    argparser.add_argument('--test_size', type=int, default=10000)
     argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
     argparser.add_argument('--model_fpat', type=str, default="saved_model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
