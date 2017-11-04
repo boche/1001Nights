@@ -190,7 +190,7 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         print("gt:", truth)
         print(80 * '-')
         
-def test(model_path, testset, is_text=True):
+def test(model_path, testset, test_size=10000, is_text=True):
     def vectorize(raw_data):
         data_vec = []
         for data in raw_data:
@@ -211,7 +211,7 @@ def test(model_path, testset, is_text=True):
     
     random.seed(15213)
     random.shuffle(testset)
-    for _, headline, body in testset[:10000]:
+    for _, headline, body in testset[:test_size]:
         inputs = torch.LongTensor([body])
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
@@ -222,7 +222,8 @@ def test(model_path, testset, is_text=True):
         print("Decode Approach: {}".format(decode_approach))
         avg_score = rouge.get_scores(hyps[decode_approach], refs[decode_approach], avg=True)
         for metric, f1_prec_recl in avg_score.items():
-            print("%s: %.4f" % (metric, f1_prec_recl))
+            s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]), f1_prec_recl.items())))
+            print("%s: %s" % (metric, s))
 
 def vec2text_from_full(test_size=500):
     idx2word_full = pickle.load(open(args.save_path + 'nyt/idx2word_full.pkl', 'rb'))
