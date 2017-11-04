@@ -229,7 +229,7 @@ def vec2text_from_full():
     idx2word_full = pickle.load(open(args.save_path + 'nyt/idx2word_full.pkl', 'rb'))
     data = pickle.load(open(args.save_path + 'nyt/nyt_eng_200912.pkl', 'rb'))
     data_text = []
-    for docid, headline, body in data[:args.test_size]:
+    for docid, headline, body in data:
         if len(headline) > 0 and len(body) > 0:
             raw_headline = [idx2word_full[w] for w in headline]
             raw_body = [idx2word_full[w] for w in body]
