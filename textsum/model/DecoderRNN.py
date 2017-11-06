@@ -9,7 +9,7 @@ from .attn import *
 
 class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio,
-            dropout, rnn_model, attn_model='general'):
+            dropout, rnn_model, bidir, attn_model='general'):
         # attn_model supports: 'none', 'general', 'dot'
         super(DecoderRNN, self).__init__()
         self.nlayers = nlayers
@@ -18,6 +18,7 @@ class DecoderRNN(nn.Module):
         self.teach_ratio = teach_ratio
         self.attn_model = attn_model
         self.rnn_model = rnn_model
+        self.bidir = bidir
 
         self.emb = emb
         # self.dropout = nn.Dropout(dropout)
@@ -32,9 +33,10 @@ class DecoderRNN(nn.Module):
             self.rnn = nn.LSTM(input_size = rnn_input_size, hidden_size = hidden_size,
                     dropout = dropout, num_layers = nlayers, batch_first = True)
         if self.attn_model != 'none':
-            self.concat = nn.Linear(hidden_size * 2, hidden_size)
+            self.concat_size = hidden_size * 3 if bidir else hidden_size * 2
+            self.concat = nn.Linear(self.concat_size, hidden_size)
             self.attn_model = attn_model
-            self.attn = Attn(attn_model, hidden_size)
+            self.attn = Attn(attn_model, hidden_size, bidir)
             
     def getAttnOutput(self, batch_input, last_output, h, encoder_output, input_lens):
         input_emb = self.emb(batch_input)

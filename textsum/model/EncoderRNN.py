@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 class EncoderRNN(nn.Module):
-    def __init__(self, vocab_size, emb, hidden_size, nlayers, dropout, rnn_model):
+    def __init__(self, vocab_size, emb, hidden_size, nlayers, dropout, rnn_model, bidir):
         super(EncoderRNN, self).__init__()
         self.nlayers = nlayers
         self.hidden_size = hidden_size
@@ -12,10 +12,10 @@ class EncoderRNN(nn.Module):
         emb_size = self.emb.weight.size(1)
         if rnn_model == 'gru':
             self.rnn = nn.GRU(input_size=emb_size, hidden_size = hidden_size,
-                dropout = dropout, num_layers = nlayers, batch_first = True)
+                dropout = dropout, num_layers = nlayers, batch_first = True, bidirectional = bidir)
         else:
             self.rnn = nn.LSTM(input_size=emb_size, hidden_size = hidden_size,
-                dropout = dropout, num_layers = nlayers, batch_first = True)
+                dropout = dropout, num_layers = nlayers, batch_first = True, bidirectional = bidir)
 
     def forward(self, xin, input_lengths):
         """

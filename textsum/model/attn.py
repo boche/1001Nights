@@ -5,12 +5,15 @@ from torch.autograd import Variable
 
 
 class Attn(nn.Module):
-    def __init__(self, method, hidden_size):
+    def __init__(self, method, hidden_size, bidir):
         super(Attn, self).__init__()
         self.method = method
         self.hidden_size = hidden_size
+        self.bidir = bidir
+        self.input_size = self.hidden_size * 2 if bidir else self.hidden_size
         if self.method == 'general':
-            self.attn = nn.Linear(self.hidden_size, hidden_size)
+            self.attn = nn.Linear(self.input_size, hidden_size)
+
 
     def forward(self, hidden, encoder_outputs, input_lens):
         # encoder_output: B x S x H

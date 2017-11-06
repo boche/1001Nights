@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from .EncoderRNN import EncoderRNN
 from .DecoderRNN import DecoderRNN
 
@@ -15,21 +16,28 @@ class Seq2Seq(nn.Module):
         self.max_title_len = args.max_title_len
         self.attn_model = args.attn_model
         self.rnn_model = args.rnn_model
+        self.bidir = args.bidir
+        if self.bidir:
+            self.linear = nn.Linear(self.nlayers * 2, self.nlayers)
 
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
         self.encoder = EncoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers, self.dropout, self.rnn_model)
+                self.nlayers, self.dropout, self.rnn_model, self.bidir)
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers, self.teach_ratio, self.dropout, self.rnn_model, self.attn_model)
+                self.nlayers, self.teach_ratio, self.dropout, self.rnn_model, self.bidir, self.attn_model)
 
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
+        if self.bidir:
+            encoder_hidden = F.tanh(self.linear(encoder_hidden.transpose(0, 2)).transpose(0, 2))
         logp = self.decoder(targets, encoder_hidden, encoder_output, input_lens)
         return logp
 
     def summarize(self, inputs, input_lens, beam_search=True):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
+        if self.bidir:
+            encoder_hidden = F.tanh(self.linear(encoder_hidden.transpose(0, 2)).transpose(0, 2))
         logp, symbols = None, None
         if beam_search:
             logp, symbols, attns = self.decoder.summarize_bs(encoder_hidden,

@@ -265,6 +265,7 @@ if __name__ == "__main__":
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.03)
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='gru')
+    argparser.add_argument('--bidir', action='store_true', default = False)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
