@@ -10,9 +10,10 @@ class Attn(nn.Module):
         self.method = method
         self.hidden_size = hidden_size
         self.bidir = bidir
-        self.input_size = self.hidden_size * 2 if bidir else self.hidden_size
+        
         if self.method == 'general':
-            self.attn = nn.Linear(self.input_size, hidden_size)
+            self.encoder_output_size = self.hidden_size * 2 if bidir else self.hidden_size
+            self.attn = nn.Linear(self.encoder_output_size, hidden_size)
 
 
     def forward(self, hidden, encoder_outputs, input_lens):

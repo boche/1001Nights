@@ -18,7 +18,7 @@ class Seq2Seq(nn.Module):
         self.rnn_model = args.rnn_model
         self.bidir = args.bidir
         if self.bidir:
-            self.linear = nn.Linear(self.nlayers * 2, self.nlayers)
+            self.linear = nn.Linear(self.hidden_size * 2, self.hidden_size)
 
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
@@ -30,14 +30,16 @@ class Seq2Seq(nn.Module):
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         if self.bidir:
-            encoder_hidden = F.tanh(self.linear(encoder_hidden.transpose(0, 2)).transpose(0, 2))
+            encoder_hidden = encoder_hidden.view(self.nlayers, -1, self.hidden_size * 2)
+            encoder_hidden = F.tanh(self.linear(encoder_hidden))
         logp = self.decoder(targets, encoder_hidden, encoder_output, input_lens)
         return logp
 
     def summarize(self, inputs, input_lens, beam_search=True):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         if self.bidir:
-            encoder_hidden = F.tanh(self.linear(encoder_hidden.transpose(0, 2)).transpose(0, 2))
+            encoder_hidden = encoder_hidden.view(self.nlayers, -1, self.hidden_size * 2)
+            encoder_hidden = F.tanh(self.linear(encoder_hidden))
         logp, symbols = None, None
         if beam_search:
             logp, symbols, attns = self.decoder.summarize_bs(encoder_hidden,
