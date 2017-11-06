@@ -30,7 +30,7 @@ class Seq2Seq(nn.Module):
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         if self.bidir:
-            encoder_hidden = encoder_hidden.view(self.nlayers, -1, self.hidden_size * 2)
+            encoder_hidden = torch.cat([encoder_hidden[0::2, :, :], encoder_hidden[1::2, :, :]], 2)
             encoder_hidden = F.tanh(self.linear(encoder_hidden))
         logp = self.decoder(targets, encoder_hidden, encoder_output, input_lens)
         return logp
@@ -38,7 +38,7 @@ class Seq2Seq(nn.Module):
     def summarize(self, inputs, input_lens, beam_search=True):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         if self.bidir:
-            encoder_hidden = encoder_hidden.view(self.nlayers, -1, self.hidden_size * 2)
+            encoder_hidden = torch.cat([encoder_hidden[0::2, :, :], encoder_hidden[1::2, :, :]], 2)
             encoder_hidden = F.tanh(self.linear(encoder_hidden))
         logp, symbols = None, None
         if beam_search:
