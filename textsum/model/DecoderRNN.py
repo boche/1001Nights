@@ -1,15 +1,16 @@
+import heapq
 import random
-import numpy as np
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
-import heapq
 from .attn import * 
+from .pointerNet import * 
 
 class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio,
-            dropout, rnn_model, attn_model='general'):
+            dropout, rnn_model, pointer_net, attn_model='general'):
         # attn_model supports: 'none', 'general', 'dot'
         super(DecoderRNN, self).__init__()
         self.nlayers = nlayers
@@ -18,12 +19,13 @@ class DecoderRNN(nn.Module):
         self.teach_ratio = teach_ratio
         self.attn_model = attn_model
         self.rnn_model = rnn_model
+        self.pointer_net = pointer_net
 
         self.emb = emb
         # self.dropout = nn.Dropout(dropout)
         emb_size = self.emb.weight.size(1)
         self.out = nn.Linear(self.hidden_size, self.output_size)
-
+        
         rnn_input_size = emb_size if attn_model == 'none' else emb_size + hidden_size
         if rnn_model == 'gru':
             self.rnn = nn.GRU(input_size = rnn_input_size, hidden_size = hidden_size,
@@ -36,18 +38,32 @@ class DecoderRNN(nn.Module):
             self.attn_model = attn_model
             self.attn = Attn(attn_model, hidden_size)
             
+            if self.pointer_net:  # activate copy mechanism from pointer net
+                self.ptr = PointerNet(emb_size, hidden_size)
+            
     def getAttnOutput(self, batch_input, last_output, h, encoder_output, input_lens):
         input_emb = self.emb(batch_input)
         concat_input = torch.cat([input_emb, last_output], 1).unsqueeze(1)
         rnn_output, h = self.rnn(concat_input, h)
         attn_weights = self.attn(rnn_output, encoder_output, input_lens) # b x 1 x s
         context = attn_weights.bmm(encoder_output)
-
+        
         # Final output layer (next word prediction) using the RNN hidden state and context vector
         concat_input = torch.cat((rnn_output, context), 2).squeeze(1)
         concat_output = F.tanh(self.concat(concat_input))
-        logp = F.log_softmax(self.out(concat_output))
+        logp = None
+        
+        if self.pointer_net:
+            p_vocab = F.softmax(self.out(concat_output))
+            logp = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output)
+        else:
+            logp = F.log_softmax(self.out(concat_output))
         return logp, h, concat_output, attn_weights
+    
+    def getPointerOutput(self, p_vocab, context, attn_weights, input_emb, rnn_output):
+        p_gen = self.ptr(context, rnn_output, input_emb)
+        # print('P_gen', p_gen.size())
+        return None 
 
     def forward(self, target, encoder_hidden, encoder_output, input_lens):
         batch_size, max_seq_len = target.size()
@@ -72,8 +88,8 @@ class DecoderRNN(nn.Module):
                 logp = F.log_softmax(xout)
             else:
                 logp, h, last_output, _ = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
+            
             batch_output.append(logp)
-
             if use_teacher_forcing:
                 batch_input = Variable(target[: ,t])
             else:

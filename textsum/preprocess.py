@@ -40,7 +40,8 @@ class FileReader:
         vec_words = []
         for w in words:
             raw_w = self.i2w_full[w]
-            vec_w = self.word2idx.get(raw_w, self.word2idx[UNK])
+            oov_w = raw_w if args.keep_oov else self.word2idx[UNK]
+            vec_w = self.word2idx.get(raw_w, oov_w)
             vec_words.append(vec_w)
         return vec_words
 
@@ -181,6 +182,8 @@ class FileReader:
         for idx, doc in enumerate(self.docs):
             if idx % 1e5 == 0:
                 logging.info('--- - Vectoring {} out of {} docs ---'.format(idx, len(self.docs)))
+                if vec_data:
+                    print(vec_data[-1][1])
             docid, headline, body = doc
             body_vec = self.vectorize_compressed(body)
             headline_vec = self.vectorize_compressed(headline)      
@@ -188,7 +191,8 @@ class FileReader:
             
         logging.info("--- Training data ({} docs) generation complete ---".format(len(self.docs)))
         self.data['text_vecs'] = vec_data
-        suffix = args.time_interval if args.source == 'xml' else ('std_v%d' % args.vocab_size)
+        oov = "_keepOOV" if args.keep_oov else ""
+        suffix = args.time_interval if args.source == 'xml' else ('std_v%d%s' % (args.vocab_size, oov))
         vec_path = '{}vec_data_{}.pkl'.format(args.save_path, suffix)
         pickle.dump(self.data, open(vec_path, "wb"))
         logging.info('--- Vectorized documents saved in {} ---'.format(vec_path))
@@ -247,6 +251,8 @@ if __name__ == "__main__":
             "format: start_month-end_month, inclusive, range=[199407, 201012]")    
     argparser.add_argument('--vocab_size', type=int, default=50000)
     argparser.add_argument('--max_body_len', type=int, default=200)
+    argparser.add_argument('--keep_oov', action='store_true', default = False, help=
+                           "keep out_of_vocab words in textual form for copy mechanism")
     args = argparser.parse_args()
     logging.basicConfig(level = 'DEBUG', format= 
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')

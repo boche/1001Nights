@@ -239,7 +239,9 @@ def vec2text_from_full(test_size=500):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--vecdata', type=str, default=
-            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+            # "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV.pkl")
+    
     argparser.add_argument('--save_path', type=str, default=
             "/pylon5/ir3l68p/haomingc/1001Nights/")
     argparser.add_argument('--test_fpath', type=str, default=
@@ -250,20 +252,21 @@ if __name__ == "__main__":
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
     argparser.add_argument('--batch_size', type=int, default=128)
-    argparser.add_argument('--emb_size', type=int, default=128)
-    argparser.add_argument('--hidden_size', type=int, default=128)
+    argparser.add_argument('--emb_size', type=int, default=64)
+    argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
     argparser.add_argument('--nepochs', type=int, default=30)
     argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=32)
-    argparser.add_argument('--learning_rate', type=float, default=0.003)
+    argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
     argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
     argparser.add_argument('--show_attn', action='store_true', default = False)
+    argparser.add_argument('--pointer_net', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
-    argparser.add_argument('--l2', type=float, default=0.03)
-    argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='gru')
+    argparser.add_argument('--l2', type=float, default=0.001)
+    argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
