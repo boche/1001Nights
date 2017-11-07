@@ -5,6 +5,7 @@ import pickle
 import sys
 import time
 import os
+import argparse
 from tokens import *
 import xml.etree.ElementTree as ET
 from collections import Counter
@@ -117,12 +118,17 @@ def convert_file():
 if __name__ == "__main__":
     input_path = "/data/MM1/corpora/LDC2012T21/anno_eng_gigaword_5/data/xml/*gz"
     output_path = "/data/ASR5/bchen2/1001Nights/anno_eng_gigaword_5/"
-    vocab_size = 50000
-    max_input_sentences = 10
-    max_target_sentences = 5
-    max_sent_len = 20
 
-    # word2idx, word2cnt, idx2word = {}, Counter(), []
-    # pos2idx, idx2pos = {}, []
-    # index_file(input_path)
-    convert_file()
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--mode', type=str, choices=['index', 'convert'], default='convert')   
+    args = argparser.parse_args()
+    if args.mode == "index":
+        word2idx, word2cnt, idx2word = {}, Counter(), []
+        pos2idx, idx2pos = {}, []
+        index_file(input_path)
+    else:
+        vocab_size = 50000
+        max_input_sentences = 10
+        max_target_sentences = 5
+        max_sent_len = 20
+        convert_file()
