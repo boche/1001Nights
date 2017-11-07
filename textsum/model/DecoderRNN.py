@@ -57,7 +57,7 @@ class DecoderRNN(nn.Module):
         logp = F.log_softmax(xout)
         return logp, h
 
-    def initLastOutput(batch_size):
+    def initLastOutput(self, batch_size):
         use_cuda = next(self.parameters()).data.is_cuda
         last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         if use_cuda:
@@ -66,13 +66,12 @@ class DecoderRNN(nn.Module):
 
     def forward(self, target, encoder_hidden, encoder_output, input_lens):
         batch_size, max_seq_len = target.size()
-        use_teacher_forcing = random.random() < self.teach_ratio
-
         h = encoder_hidden
         batch_input = Variable(target[:, 0]) #SOS, b
         batch_output = []
         if self.attn_model != 'none':
-            last_output = initLastOutput(batch_size)
+            last_output = self.initLastOutput(batch_size)
+        use_teacher_forcing = random.random() < self.teach_ratio
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
@@ -89,7 +88,6 @@ class DecoderRNN(nn.Module):
 
     def summarize(self, encoder_hidden, max_seq_len, encoder_output, input_lens):
         batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
-
         h = encoder_hidden
         # here it's assuming SOS has index 0
         batch_input = Variable(torch.Tensor.long(torch.zeros(batch_size)))
@@ -99,7 +97,7 @@ class DecoderRNN(nn.Module):
         batch_output, batch_attn = [], []
         batch_symbol = [batch_input]
         if self.attn_model != 'none':
-            last_output = initLastOutput(batch_size)
+            last_output = self.initLastOutput(batch_size)
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
@@ -118,7 +116,7 @@ class DecoderRNN(nn.Module):
         batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
         
         h = encoder_hidden
-        last_output = initLastOutput(batch_size)
+        last_output = self.initLastOutput(batch_size)
         last_candidates = [(0.0 ,(np.int64(0), [np.int64(0)], [0.0], h, last_output))]
 
         def find_candidates(last_logp, last_word, prev_words, outputs, h, last_output):
