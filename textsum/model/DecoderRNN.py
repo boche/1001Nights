@@ -49,6 +49,21 @@ class DecoderRNN(nn.Module):
         logp = F.log_softmax(self.out(concat_output))
         return logp, h, concat_output, attn_weights
 
+    def getRNNOutput(self, batch_input, h):
+        # input_emb = self.dropout(self.emb(batch_input).unsqueeze(1)) # b x 1 x hdim
+        input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
+        rnn_output, h = self.rnn(input_emb, h)
+        xout = self.out(rnn_output).squeeze(1)
+        logp = F.log_softmax(xout)
+        return logp, h
+
+    def initLastOutput(batch_size):
+        use_cuda = next(self.parameters()).data.is_cuda
+        last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
+        if use_cuda:
+            last_output = last_output.cuda()
+        return last_output
+
     def forward(self, target, encoder_hidden, encoder_output, input_lens):
         batch_size, max_seq_len = target.size()
         use_teacher_forcing = random.random() < self.teach_ratio
@@ -56,20 +71,12 @@ class DecoderRNN(nn.Module):
         h = encoder_hidden
         batch_input = Variable(target[:, 0]) #SOS, b
         batch_output = []
-        
         if self.attn_model != 'none':
-            last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
-            use_cuda = next(self.parameters()).data.is_cuda
-            if use_cuda:
-                last_output = last_output.cuda()
+            last_output = initLastOutput(batch_size)
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
-                # input_emb = self.dropout(self.emb(batch_input).unsqueeze(1)) # b x 1 x hdim
-                input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
-                rnn_output, h = self.rnn(input_emb, h)
-                xout = self.out(rnn_output).squeeze(1)
-                logp = F.log_softmax(xout)
+                logp, h = self.getRNNOutput(batch_input, h)
             else:
                 logp, h, last_output, _ = self.getAttnOutput(batch_input, last_output, h, encoder_output, input_lens)
             batch_output.append(logp)
@@ -91,18 +98,12 @@ class DecoderRNN(nn.Module):
             batch_input = batch_input.cuda()
         batch_output, batch_attn = [], []
         batch_symbol = [batch_input]
-        last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
-        use_cuda = next(self.parameters()).data.is_cuda
-        if use_cuda:
-            last_output = last_output.cuda()
+        if self.attn_model != 'none':
+            last_output = initLastOutput(batch_size)
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
-                # input_emb = self.dropout(self.emb(batch_input).unsqueeze(1)) # b x 1 x hdim
-                input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
-                rnn_output, h = self.rnn(input_emb, h)
-                xout = self.out(rnn_output).squeeze(1)
-                logp = F.log_softmax(xout)
+                logp, h = self.getRNNOutput(batch_input, h)
             else:
                 logp, h, last_output, attn_weights = self.getAttnOutput(
                         batch_input, last_output, h, encoder_output, input_lens)
@@ -117,12 +118,8 @@ class DecoderRNN(nn.Module):
         batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
         
         h = encoder_hidden
-        last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
-        use_cuda = next(self.parameters()).data.is_cuda
-        if use_cuda:
-            last_output = last_output.cuda()
+        last_output = initLastOutput(batch_size)
         last_candidates = [(0.0 ,(np.int64(0), [np.int64(0)], [0.0], h, last_output))]
-        
 
         def find_candidates(last_logp, last_word, prev_words, outputs, h, last_output):
             if last_word.item() == 1: #EOS
@@ -136,11 +133,7 @@ class DecoderRNN(nn.Module):
 
             inp = Variable(torch.Tensor.long(torch.zeros(1)).fill_(last_word.item()))
             if self.attn_model == 'none':
-                input_emb = self.emb(inp).unsqueeze(1)
-                # input_emb = self.dropout(self.emb(inp).unsqueeze(1))
-                rnn_output, h = self.rnn(input_emb, h)
-                xout = self.out(rnn_output).squeeze(1)
-                logp = F.log_softmax(xout)
+                logp, h = self.getRNNOutput(inp, h)
             else:
                 logp, h, last_output, _ = self.getAttnOutput(inp, last_output, h, encoder_output, input_lens)
             res, ind = logp.topk(beam_size)
