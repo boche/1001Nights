@@ -48,7 +48,11 @@ def next_batch(batch_idx, data):
     inputs = [pad_seq(x, max(input_lens)) for x in inputs]
     target_lens = [len(y) for y in targets]
     targets = [pad_seq(y, max(target_lens)) for y in targets]
-    return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
+    
+    if not args.use_pointer_net:
+        inputs = torch.LongTensor(inputs)
+        targets = torch.LongTensor(targets)
+    return inputs, targets, input_lens, target_lens
 
 def mask_loss(logp, target_lens, targets):
     """
@@ -65,6 +69,28 @@ def mask_loss(logp, target_lens, targets):
         loss +=  torch.gather(logp_i, 1, idx).sum()
     # -: negative log likelihood
     return -loss
+
+def build_local_index(inputs, targets):
+    """
+    inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
+    targets: same as above, but for headline.
+    """
+    inps, tgts = [], []
+    loc_word2idx, loc_idx2word = {}, {}
+    # loc_idx = args.vocab_size + SP_TOKEN_SIZE  # size of global index
+    loc_idx = args.vocab_size  # size of global index
+    
+    for inp, tgt in zip(inputs, targets):
+        for word in inp + tgt:
+            if type(word) == str and word not in loc_word2idx:   # an out-of-vocabulary word
+                loc_word2idx[word] = loc_idx
+                loc_idx2word[loc_idx] = word
+                loc_idx +=1
+        inp = [(w if type(w) == int else loc_word2idx[w]) for w in inp]
+        tgt = [(w if type(w) == int else loc_word2idx[w]) for w in tgt]
+        inps.append(inp)
+        tgts.append(tgt)
+    return inps, tgts, loc_word2idx, loc_idx2word
 
 def train(data):
     nbatch = len(data)
@@ -91,9 +117,13 @@ def train(data):
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
         for inputs, targets, input_lens, target_lens in train_data[:5000]:
+            loc_word2idx, loc_idx2word = None, None  # local oov indexing for a batch
+            if args.use_pointer_net:
+                inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)            
             if args.use_cuda:
                 targets = targets.cuda()
                 inputs = inputs.cuda()
+                
             logp = s2s(inputs, input_lens, targets)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
@@ -215,7 +245,7 @@ def test(model_path, testset, test_size=10000, is_text=True):
         inputs = torch.LongTensor([body])
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
-        summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
+        # summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
         
     rouge = Rouge()
     for decode_approach in ["Greedy Search", "Beam Search"]:
@@ -240,7 +270,7 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--vecdata', type=str, default=
             # "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
-            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV.pkl")
+        "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV.pkl")
     
     argparser.add_argument('--save_path', type=str, default=
             "/pylon5/ir3l68p/haomingc/1001Nights/")
@@ -263,10 +293,10 @@ if __name__ == "__main__":
     argparser.add_argument('--dropout', type=float, default=0.0)
     argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
     argparser.add_argument('--show_attn', action='store_true', default = False)
-    argparser.add_argument('--pointer_net', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.001)
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
+    argparser.add_argument('--use_pointer_net', action='store_true', default = False)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():

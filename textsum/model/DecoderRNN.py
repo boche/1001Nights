@@ -10,7 +10,7 @@ from .pointerNet import *
 
 class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio,
-            dropout, rnn_model, pointer_net, attn_model='general'):
+            dropout, rnn_model, use_pointer_net, attn_model='general'):
         # attn_model supports: 'none', 'general', 'dot'
         super(DecoderRNN, self).__init__()
         self.nlayers = nlayers
@@ -19,7 +19,7 @@ class DecoderRNN(nn.Module):
         self.teach_ratio = teach_ratio
         self.attn_model = attn_model
         self.rnn_model = rnn_model
-        self.pointer_net = pointer_net
+        self.use_pointer_net = use_pointer_net
 
         self.emb = emb
         # self.dropout = nn.Dropout(dropout)
@@ -38,7 +38,7 @@ class DecoderRNN(nn.Module):
             self.attn_model = attn_model
             self.attn = Attn(attn_model, hidden_size)
             
-            if self.pointer_net:  # activate copy mechanism from pointer net
+            if self.use_pointer_net:  # activate copy mechanism from pointer net
                 self.ptr = PointerNet(emb_size, hidden_size)
             
     def getAttnOutput(self, batch_input, last_output, h, encoder_output, input_lens):
@@ -53,7 +53,7 @@ class DecoderRNN(nn.Module):
         concat_output = F.tanh(self.concat(concat_input))
         logp = None
         
-        if self.pointer_net:
+        if self.use_pointer_net:
             p_vocab = F.softmax(self.out(concat_output))
             logp = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output)
         else:
