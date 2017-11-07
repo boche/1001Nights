@@ -86,11 +86,12 @@ def build_local_index(inputs, targets):
                 loc_word2idx[word] = loc_idx
                 loc_idx2word[loc_idx] = word
                 loc_idx +=1
-        inp = [(w if type(w) == int else loc_word2idx[w]) for w in inp]
-        tgt = [(w if type(w) == int else loc_word2idx[w]) for w in tgt]
-        inps.append(inp)
-        tgts.append(tgt)
-    return inps, tgts, loc_word2idx, loc_idx2word
+        inps.append([(w if type(w) == int else loc_word2idx[w]) for w in inp])
+        tgts.append([(w if type(w) == int else loc_word2idx[w]) for w in tgt])
+        
+    inputs = torch.LongTensor(inps)
+    targets = torch.LongTensor(tgts)
+    return inputs, targets, loc_word2idx, loc_idx2word
 
 def train(data):
     nbatch = len(data)
@@ -117,14 +118,15 @@ def train(data):
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
         for inputs, targets, input_lens, target_lens in train_data[:5000]:
-            loc_word2idx, loc_idx2word = None, None  # local oov indexing for a batch
+            loc_word2idx, loc_idx2word = {}, {}  # local oov indexing for a batch
             if args.use_pointer_net:
                 inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)            
             if args.use_cuda:
                 targets = targets.cuda()
                 inputs = inputs.cuda()
-                
-            logp = s2s(inputs, input_lens, targets)
+            
+            oov_size = len(loc_word2idx) 
+            logp = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()

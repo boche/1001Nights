@@ -20,14 +20,14 @@ class Seq2Seq(nn.Module):
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
         self.encoder = EncoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers, self.dropout, self.rnn_model)
+                self.nlayers, self.dropout, self.rnn_model, self.use_pointer_net)
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
                 self.nlayers, self.teach_ratio, self.dropout, self.rnn_model, 
                 self.attn_model, self.use_pointer_net)
 
-    def forward(self, inputs, input_lens, targets):
+    def forward(self, inputs, input_lens, targets, oov_size):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
-        logp = self.decoder(targets, encoder_hidden, encoder_output, input_lens)
+        logp = self.decoder(targets, encoder_hidden, encoder_output, input_lens, oov_size)
         return logp
 
     def summarize(self, inputs, input_lens, beam_search=True):

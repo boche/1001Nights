@@ -16,6 +16,7 @@ class DecoderRNN(nn.Module):
         self.nlayers = nlayers
         self.output_size = vocab_size
         self.hidden_size = hidden_size
+        self.vocab_size = vocab_size
         self.teach_ratio = teach_ratio
         self.attn_model = attn_model
         self.rnn_model = rnn_model
@@ -60,13 +61,29 @@ class DecoderRNN(nn.Module):
             logp = F.log_softmax(self.out(concat_output))
         return logp, h, concat_output, attn_weights
     
+
     def getPointerOutput(self, p_vocab, context, attn_weights, input_emb, rnn_output):
-        p_gen = self.ptr(context, rnn_output, input_emb)
-        # print('P_gen', p_gen.size())
+        """
+        p_vocab: B x V
+        """
+        p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1, broadcastable
+        self.ext_vocab_size = self.output_size + self.oov_size
+
+        # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
+        p_gen_vocab = torch.mul(p_gen, p_vocab)
+        p_gen_oov = torch.zeros(self.batch_size, self.oov_size)
+        p_gen_extVocab = torch.cat((p_gen_vocab, p_gen_oov), 1)  # B x ExtV
+        
+        # compute probability to copy from source: (1 - p(gen)) * P(w)
+
+        print(p_gen_extVocab.size())
         return None 
 
-    def forward(self, target, encoder_hidden, encoder_output, input_lens):
-        batch_size, max_seq_len = target.size()
+    
+    
+    def forward(self, target, encoder_hidden, encoder_output, input_lens, oov_size):
+        self.oov_size = oov_size
+        self.batch_size, max_seq_len = target.size()
         use_teacher_forcing = random.random() < self.teach_ratio
 
         h = encoder_hidden
@@ -74,7 +91,7 @@ class DecoderRNN(nn.Module):
         batch_output = []
         
         if self.attn_model != 'none':
-            last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
+            last_output = Variable(torch.Tensor(torch.zeros(self.batch_size, self.hidden_size)))
             use_cuda = next(self.parameters()).data.is_cuda
             if use_cuda:
                 last_output = last_output.cuda()

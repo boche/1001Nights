@@ -25,5 +25,5 @@ class PointerNet(nn.Module):
 
         gen_input = torch.cat((input_emb, context, rnn_output), 1)
         prob_gen = F.sigmoid(self.generator(gen_input))
-        print(score.size(), prob_gen.size())
+        # print(gen_input.size(), prob_gen.size())
         return prob_gen
