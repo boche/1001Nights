@@ -33,7 +33,7 @@ class DecoderRNN(nn.Module):
             self.rnn = nn.LSTM(input_size = rnn_input_size, hidden_size = hidden_size,
                     dropout = dropout, num_layers = nlayers, batch_first = True)
         if self.attn_model != 'none':
-            self.concat_size = hidden_size * 3 if bidir else hidden_size * 2
+            self.concat_size = hidden_size * (3 if bidir else 2)
             self.concat = nn.Linear(self.concat_size, hidden_size)
             self.attn_model = attn_model
             self.attn = Attn(attn_model, hidden_size, bidir)

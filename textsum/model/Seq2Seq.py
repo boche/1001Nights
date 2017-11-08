@@ -19,6 +19,8 @@ class Seq2Seq(nn.Module):
         self.bidir = args.bidir
         if self.bidir:
             self.linear = nn.Linear(self.hidden_size * 2, self.hidden_size)
+            if self.rnn_model == 'lstm':
+                self.linear2 = nn.Linear(self.hidden_size * 2, self.hidden_size)
 
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
@@ -27,19 +29,35 @@ class Seq2Seq(nn.Module):
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
                 self.nlayers, self.teach_ratio, self.dropout, self.rnn_model, self.bidir, self.attn_model)
 
+    def bidirTrans(self, encoder_hidden, isCell=False):
+        encoder_hidden = torch.cat([encoder_hidden[0::2, :, :], encoder_hidden[1::2, :, :]], 2)
+        if isCell:
+            encoder_hidden = F.tanh(self.linear2(encoder_hidden))
+        else:
+            encoder_hidden = F.tanh(self.linear(encoder_hidden))
+        return encoder_hidden
+
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         if self.bidir:
-            encoder_hidden = torch.cat([encoder_hidden[0::2, :, :], encoder_hidden[1::2, :, :]], 2)
-            encoder_hidden = F.tanh(self.linear(encoder_hidden))
+            if self.rnn_model == 'gru':
+                encoder_hidden = self.bidirTrans(encoder_hidden)
+            else:
+                hidden_state = self.bidirTrans(encoder_hidden[0])
+                cell_state = self.bidirTrans(encoder_hidden[1], True)
+                encoder_hidden = (hidden_state, cell_state)
         logp = self.decoder(targets, encoder_hidden, encoder_output, input_lens)
         return logp
 
     def summarize(self, inputs, input_lens, beam_search=True):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         if self.bidir:
-            encoder_hidden = torch.cat([encoder_hidden[0::2, :, :], encoder_hidden[1::2, :, :]], 2)
-            encoder_hidden = F.tanh(self.linear(encoder_hidden))
+            if self.rnn_model == 'gru':
+                encoder_hidden = self.bidirTrans(encoder_hidden)
+            else:
+                hidden_state = self.bidirTrans(encoder_hidden[0])
+                cell_state = self.bidirTrans(encoder_hidden[1], True)
+                encoder_hidden = (hidden_state, cell_state)
         logp, symbols = None, None
         if beam_search:
             logp, symbols, attns = self.decoder.summarize_bs(encoder_hidden,
