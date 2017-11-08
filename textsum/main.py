@@ -260,7 +260,7 @@ if __name__ == "__main__":
     argparser.add_argument('--learning_rate', type=float, default=0.003)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
-    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
+    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot', 'concat'], default='none')
     argparser.add_argument('--show_attn', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.03)
