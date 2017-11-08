@@ -81,7 +81,7 @@ def build_local_index(inputs, targets):
     
     for inp, tgt in zip(inputs, targets):
         for i, word in enumerate(inp):
-            if type(word) == str:
+            if isinstance(word, str):
                 if word not in loc_word2idx:   # an out-of-vocabulary word
                     loc_word2idx[word] = loc_idx
                     loc_idx2word[loc_idx] = word
@@ -90,7 +90,7 @@ def build_local_index(inputs, targets):
                 
         for i, word in enumerate(tgt):
             # an out-of-vocabulary word that only exists in target will transform to UNK
-            if type(word) == str:
+            if isinstance(word, str):
                 tgt[i] = loc_word2idx[word] if word in loc_word2idx else word2idx[UNK]
                 
         inps.append(inp)
@@ -105,7 +105,7 @@ def train(data):
     def data_transform(inputs, targets):
         loc_word2idx, loc_idx2word = {}, {}
         if args.use_pointer_net:
-            inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)            
+            inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)
         if args.use_cuda:
             targets = targets.cuda()
             inputs = inputs.cuda()
@@ -137,7 +137,7 @@ def train(data):
         for inputs, targets, input_lens, target_lens in train_data[:5000]:
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
-            oov_size = len(loc_word2idx) 
+            oov_size = len(loc_word2idx)
             
             logp = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
@@ -179,7 +179,7 @@ def idxes2sent(idxes, loc_idx2word):
             break
         seq.append(('%s_COPY' % loc_idx2word[idx]) if idx in loc_idx2word else idx2word[idx])
     # some characters may not be printable if not encode by utf-8
-    return " ".join(seq).encode('utf-8').decode("utf-8") 
+    return " ".join(seq).encode('utf-8').decode("utf-8")
 
 def show_attn(input_text, output_text, gold_text, attn):
     """

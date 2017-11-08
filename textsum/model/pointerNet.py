@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
-
 
 class PointerNet(nn.Module):
     def __init__(self, emb_size, hidden_size):
@@ -10,9 +8,9 @@ class PointerNet(nn.Module):
         self.emb_size = emb_size
         self.hidden_size = hidden_size
 
-        # Linear Layers for Prob_generator calculation 
+        # Linear Layers for Prob_generator calculation
         generator_input_size = emb_size + 2 * hidden_size
-        self.generator = nn.Linear(generator_input_size, 1, bias=True)    
+        self.generator = nn.Linear(generator_input_size, 1, bias=True)
 
     def forward(self, context, rnn_output, input_emb):
         context = context.squeeze(1)         # B x H

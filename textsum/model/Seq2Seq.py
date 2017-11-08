@@ -22,7 +22,7 @@ class Seq2Seq(nn.Module):
         self.encoder = EncoderRNN(self.vocab_size, self.emb, self.hidden_size,
                 self.nlayers, self.dropout, self.rnn_model, self.use_pointer_net)
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
-                self.nlayers, self.teach_ratio, self.dropout, self.rnn_model, 
+                self.nlayers, self.teach_ratio, self.dropout, self.rnn_model,
                 self.attn_model, self.use_pointer_net)
 
     def forward(self, inputs, input_lens, targets, oov_size):

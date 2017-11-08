@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from .attn import * 
-from .pointerNet import * 
+from .pointerNet import *
 
 class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio,
@@ -65,19 +65,20 @@ class DecoderRNN(nn.Module):
     def getPointerOutput(self, p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw):
         """
         p_vocab: B x V
-        inputs_raw: indexed inputs without replacing oov to UNK 
+        inputs_raw: indexed inputs without replacing oov to UNK
         attn_weights: B x 1 x S
         """
         p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1, broadcastable
         self.extVocab_size = self.output_size + self.oov_size
         self.use_cuda = p_gen.data.is_cuda
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
-        p_gen_vocab = p_gen * p_vocab
-        p_gen_oov = Variable(torch.zeros(self.batch_size, self.oov_size))
-        p_gen_oov = p_gen_oov.cuda() if self.use_cuda else p_gen_oov
-        # print('p_gen_vocab: ', type(p_gen_vocab), p_gen_vocab.data.is_cuda)
-        # print('p_gen_oov: ', type(p_gen_oov), p_gen_oov.data.is_cuda)
-        p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) # B x ExtV
+        p_gen_vocab, p_gen_oov = p_gen * p_vocab, None
+        if self.oov_size != 0:
+            p_gen_oov = Variable(torch.zeros(self.batch_size, self.oov_size))
+            p_gen_oov = p_gen_oov.cuda() if self.use_cuda else p_gen_oov
+            # print('p_gen_vocab: ', type(p_gen_vocab), p_gen_vocab.data.is_cuda)
+            # print('p_gen_oov: ', type(p_gen_oov), p_gen_oov.data.is_cuda)
+        p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) if self.oov_size else p_gen_vocab   # B x ExtV
         # p_extVocab = torch.cat([p_gen_vocab, Variable(torch.zeros(self.batch_size, self.oov_size))], 1) # B x ExtV
         
         # compute probability to copy from source: (1 - p(gen)) * P(w)
@@ -125,7 +126,7 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, last_output, _ = self.getAttnOutput(batch_input, last_output, 
+                logp, h, last_output, _ = self.getAttnOutput(batch_input, last_output,
                                               h, encoder_output, inputs_raw, input_lens)
             
             batch_output.append(logp)
@@ -135,7 +136,7 @@ class DecoderRNN(nn.Module):
                     # set oov words to <UNK> (index = 2) for encoder
                     batch_input[batch_input >= self.vocab_size] = 2
             else:
-                _, batch_input = torch.max(logp, 1, keepdim=False)  
+                _, batch_input = torch.max(logp, 1, keepdim=False)
                 # TO DO: sample for pointer net (if sampled word is oov)
                 
         return batch_output
