@@ -20,7 +20,7 @@ class Seq2Seq(nn.Module):
         if self.bidir:
             self.linear = nn.Linear(self.hidden_size * 2, self.hidden_size)
             if self.rnn_model == 'lstm':
-                self.linear2 = nn.Linear(self.hidden_size * 2, self.hidden_size)
+                self.linear_cell = nn.Linear(self.hidden_size * 2, self.hidden_size)
 
         # encoder and decoder share a common embedding layer
         self.emb = nn.Embedding(args.vocab_size, args.emb_size)
@@ -32,7 +32,7 @@ class Seq2Seq(nn.Module):
     def bidirTrans(self, encoder_hidden, isCell=False):
         encoder_hidden = torch.cat([encoder_hidden[0::2, :, :], encoder_hidden[1::2, :, :]], 2)
         if isCell:
-            encoder_hidden = F.tanh(self.linear2(encoder_hidden))
+            encoder_hidden = F.tanh(self.linear_cell(encoder_hidden))
         else:
             encoder_hidden = F.tanh(self.linear(encoder_hidden))
         return encoder_hidden
