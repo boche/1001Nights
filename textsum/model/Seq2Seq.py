@@ -18,7 +18,7 @@ class Seq2Seq(nn.Module):
         self.rnn_model = args.rnn_model
         self.bidir = args.bidir
         if self.bidir:
-            self.linear = nn.Linear(self.hidden_size * 2, self.hidden_size)
+            self.linear_hidden = nn.Linear(self.hidden_size * 2, self.hidden_size)
             if self.rnn_model == 'lstm':
                 self.linear_cell = nn.Linear(self.hidden_size * 2, self.hidden_size)
 
@@ -29,13 +29,10 @@ class Seq2Seq(nn.Module):
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
                 self.nlayers, self.teach_ratio, self.dropout, self.rnn_model, self.bidir, self.attn_model)
 
-    def bidirTrans(self, encoder_hidden, isCell=False):
-        encoder_hidden = torch.cat([encoder_hidden[0::2, :, :], encoder_hidden[1::2, :, :]], 2)
-        if isCell:
-            encoder_hidden = F.tanh(self.linear_cell(encoder_hidden))
-        else:
-            encoder_hidden = F.tanh(self.linear(encoder_hidden))
-        return encoder_hidden
+    def bidirTrans(self, encoder_state, isCell=False):
+        encoder_state = torch.cat([encoder_state[0::2, :, :], encoder_state[1::2, :, :]], 2)
+        linear_func = self.linear_cell if isCell else self.linear_hidden
+        return F.tanh(linear_func(encoder_hidden))
 
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
