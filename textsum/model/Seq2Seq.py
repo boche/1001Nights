@@ -32,7 +32,7 @@ class Seq2Seq(nn.Module):
     def bidirTrans(self, encoder_state, isCell=False):
         encoder_state = torch.cat([encoder_state[0::2, :, :], encoder_state[1::2, :, :]], 2)
         linear_func = self.linear_cell if isCell else self.linear_hidden
-        return F.tanh(linear_func(encoder_hidden))
+        return F.tanh(linear_func(encoder_state))
 
     def forward(self, inputs, input_lens, targets):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
