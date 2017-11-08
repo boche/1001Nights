@@ -24,13 +24,10 @@ def group_data(data):
     """
     data: list of (docid, head, body)
     """
-    group_data = []
     # sort by input length, group inputs with close length in a batch
     sorted_data = sorted(data, key = lambda x: len(x[2]), reverse = True)
     nbatches = (len(data) + args.batch_size - 1) // args.batch_size
-    for batch_idx in range(nbatches):
-        group_data.append(next_batch(batch_idx, sorted_data))
-    return group_data
+    return [next_batch(i, sorted_data) for i in range(nbatches)]
 
 def next_batch(batch_idx, data):
     targets, inputs = [], []
