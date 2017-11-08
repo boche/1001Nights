@@ -23,7 +23,7 @@ class PointerNet(nn.Module):
         # print('rnn_output: ', type(rnn_output), rnn_output.size())
         # print('input_emb: ', type(input_emb), input_emb.size())
 
-        gen_input = torch.cat((input_emb, context, rnn_output), 1)
+        gen_input = torch.cat([input_emb, context, rnn_output], 1)
         prob_gen = F.sigmoid(self.generator(gen_input))
         # print('prob_gen: ', type(prob_gen), prob_gen.size())
         return prob_gen

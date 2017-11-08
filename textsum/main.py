@@ -177,7 +177,7 @@ def idxes2sent(idxes, loc_idx2word):
             continue
         if idx2word[idx] == EOS:
             break
-        seq.append(loc_idx2word[idx])
+        seq.append(('%s_COPY' % loc_idx2word[idx]) if idx in loc_idx2word else idx2word[idx])
     # some characters may not be printable if not encode by utf-8
     return " ".join(seq).encode('utf-8').decode("utf-8") 
 
@@ -230,10 +230,10 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, beam_
             show_attn(text, prediction, truth, attns[i, :, :])
         
         print("<Source Text>: %s" % text)
-        print("<%s>: %s" % (decode_approach, prediction))
         print("<Ground Truth>: %s" % truth)
+        print("<%s>: %s" % (decode_approach, prediction))
         print(80 * '-')
-        
+
 def test(model_path, testset, test_size=10000, is_text=True):
     
     def vectorize(raw_data):

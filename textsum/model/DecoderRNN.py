@@ -70,11 +70,14 @@ class DecoderRNN(nn.Module):
         """
         p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1, broadcastable
         self.extVocab_size = self.output_size + self.oov_size
-
+        self.use_cuda = p_gen.data.is_cuda
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
         p_gen_vocab = p_gen * p_vocab
         p_gen_oov = Variable(torch.zeros(self.batch_size, self.oov_size))
-        p_extVocab = torch.cat((p_gen_vocab, p_gen_oov), 1)        # B x ExtV
+        p_gen_oov = p_gen_oov.cuda() if self.use_cuda else p_gen_oov
+        # print('p_gen_vocab: ', type(p_gen_vocab), p_gen_vocab.data.is_cuda)
+        # print('p_gen_oov: ', type(p_gen_oov), p_gen_oov.data.is_cuda)
+        p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) # B x ExtV
         
         # compute probability to copy from source: (1 - p(gen)) * P(w)
         p_copy_src = (1 - p_gen) * attn_weights.squeeze(1)
