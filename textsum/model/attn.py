@@ -24,7 +24,7 @@ class Attn(nn.Module):
     def forward(self, hidden, encoder_outputs, input_lens):
         # encoder_output: B x S x H
         # hidden: B x 1 x H
-        batch_size, seq_len, hidden_size = encoder_outputs.size() 
+        batch_size, seq_len, hidden_size = encoder_outputs.size()
         if self.method == 'general':
             # General score
             energy = self.attn(encoder_outputs).transpose(1, 2)

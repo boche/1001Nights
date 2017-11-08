@@ -132,7 +132,7 @@ def idxes2sent(idxes):
             break
         seq += idx2word[idx] + " "
     # some characters may not be printable if not encode by utf-8
-    return seq.encode('utf-8').decode("utf-8") 
+    return seq.encode('utf-8').decode("utf-8")
 
 def show_attn(input_text, output_text, gold_text, attn):
     """
@@ -181,12 +181,12 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         if beam_search is False and args.show_attn and args.attn_model != 'none':
             # only plot if it's not beam search
             show_attn(text, prediction, truth, attns[i, :, :])
-        
+
         print("text:", text)
         print(decode_approach, ":", prediction)
         print("gt:", truth)
         print(80 * '-')
-        
+
 def test(model_path, testset, is_text=True):
     def vectorize(raw_data):
         data_vec = []
@@ -196,16 +196,16 @@ def test(model_path, testset, is_text=True):
             body = [word2idx.get(w, word2idx[UNK]) for w in body[:args.max_text_len]]
             data_vec.append((docid, headline, body))
         return data_vec
-    
+
     s2s = torch.load(model_path, map_location=lambda storage, loc: storage)
-    # switch to CPU for testing 
-    s2s.use_cuda = False   
+    # switch to CPU for testing
+    s2s.use_cuda = False
     s2s.train(False)
-    
-    # transfrom into indice representation for testing 
+
+    # transfrom into indice representation for testing
     if is_text:
         testset = vectorize(testset)
-    
+
     random.seed(15213)
     random.shuffle(testset)
     for _, headline, body in testset[:args.test_size]:
@@ -213,7 +213,7 @@ def test(model_path, testset, is_text=True):
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
-        
+
     rouge = Rouge()
     for decode_approach in ["Greedy Search", "Beam Search"]:
         print("Decode Approach: {}".format(decode_approach))
@@ -272,10 +272,10 @@ if __name__ == "__main__":
     word2idx = vecdata["word2idx"]
     idx2word = vecdata["idx2word"]
     args.vocab_size = len(word2idx)
-    
-    # for evaluation 
+
+    # for evaluation
     hyps, refs = {'Greedy Search':[], 'Beam Search':[]}, {'Greedy Search':[], 'Beam Search':[]}
-    
+
     print("Running mode: {} model...".format(args.mode))
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
@@ -283,7 +283,7 @@ if __name__ == "__main__":
         model_path = args.save_path + args.model_name
         testset = None
         if args.data_src == 'xml':
-            testset = vec2text_from_full() 
+            testset = vec2text_from_full()
         if args.data_src == 'std':
             testset = pickle.load(open(args.test_fpath, 'rb'))
         test(model_path, testset)
