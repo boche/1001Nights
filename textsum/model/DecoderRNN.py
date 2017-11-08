@@ -141,17 +141,17 @@ class DecoderRNN(nn.Module):
         return batch_output
 
     def summarize(self, encoder_hidden, max_seq_len, encoder_output, inputs_raw, input_lens):
-        # batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
+        batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
 
         h = encoder_hidden
         # here it's assuming SOS has index 0
-        batch_input = Variable(torch.Tensor.long(torch.zeros(self.batch_size)))
+        batch_input = Variable(torch.Tensor.long(torch.zeros(batch_size)))
         use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
             batch_input = batch_input.cuda()
         batch_output, batch_attn = [], []
         batch_symbol = [batch_input]
-        last_output = Variable(torch.Tensor(torch.zeros(self.batch_size, self.hidden_size)))
+        last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
             last_output = last_output.cuda()
