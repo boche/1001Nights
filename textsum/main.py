@@ -66,7 +66,7 @@ def mask_loss(logp, target_lens, targets):
         # the first one is SOS, so skip it
         idx = Variable(targets[i][1:target_lens[i]].view(-1, 1)) # s x 1
         logp_i = logp[i, :target_lens[i]-1, :] # s x d
-        loss +=  torch.gather(logp_i, 1, idx).sum()
+        loss += torch.gather(logp_i, 1, idx).sum()
     # -: negative log likelihood
     return -loss
 
@@ -77,23 +77,40 @@ def build_local_index(inputs, targets):
     """
     inps, tgts = [], []
     loc_word2idx, loc_idx2word = {}, {}
-    # loc_idx = args.vocab_size + SP_TOKEN_SIZE  # size of global index
     loc_idx = args.vocab_size  # size of global index
     
     for inp, tgt in zip(inputs, targets):
-        for word in inp + tgt:
-            if type(word) == str and word not in loc_word2idx:   # an out-of-vocabulary word
-                loc_word2idx[word] = loc_idx
-                loc_idx2word[loc_idx] = word
-                loc_idx +=1
-        inps.append([(w if type(w) == int else loc_word2idx[w]) for w in inp])
-        tgts.append([(w if type(w) == int else loc_word2idx[w]) for w in tgt])
+        for i, word in enumerate(inp):
+            if type(word) == str:
+                if word not in loc_word2idx:   # an out-of-vocabulary word
+                    loc_word2idx[word] = loc_idx
+                    loc_idx2word[loc_idx] = word
+                    loc_idx +=1
+                inp[i] = loc_word2idx[word]
+                
+        for i, word in enumerate(tgt):
+            # an out-of-vocabulary word that only exists in target will transform to UNK
+            if type(word) == str:
+                tgt[i] = loc_word2idx[word] if word in loc_word2idx else word2idx[UNK]
+                
+        inps.append(inp)
+        tgts.append(tgt)
         
     inputs = torch.LongTensor(inps)
     targets = torch.LongTensor(tgts)
     return inputs, targets, loc_word2idx, loc_idx2word
 
 def train(data):
+    
+    def data_transform(inputs, targets):
+        loc_word2idx, loc_idx2word = {}, {}
+        if args.use_pointer_net:
+            inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)            
+        if args.use_cuda:
+            targets = targets.cuda()
+            inputs = inputs.cuda()
+        return inputs, targets, loc_word2idx, loc_idx2word
+        
     nbatch = len(data)
     ntest = nbatch // 50
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
@@ -118,14 +135,10 @@ def train(data):
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
         for inputs, targets, input_lens, target_lens in train_data[:5000]:
-            loc_word2idx, loc_idx2word = {}, {}  # local oov indexing for a batch
-            if args.use_pointer_net:
-                inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)            
-            if args.use_cuda:
-                targets = targets.cuda()
-                inputs = inputs.cuda()
-            
+            # loc_word2idx, loc_idx2word: local oov indexing for a batch
+            inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx) 
+            
             logp = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
@@ -139,17 +152,16 @@ def train(data):
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
                     time.time() - ts, loss.data[0]))
                 summarize(s2s, inputs, input_lens, targets, target_lens,
-                        beam_search = False)
+                        loc_idx2word, beam_search = False)
                 sys.stdout.flush()
         train_loss = epoch_loss / sum_len
 
         s2s.train(False)
         epoch_loss, sum_len = 0, 0
         for inputs, targets, input_lens, target_lens in test_data:
-            if args.use_cuda:
-                targets = targets.cuda()
-                inputs = inputs.cuda()
-            logp = s2s(inputs, input_lens, targets)
+            inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
+            oov_size = len(loc_word2idx) 
+            logp = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             epoch_loss += loss.data[0]
@@ -158,16 +170,16 @@ def train(data):
         model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
 
-def idxes2sent(idxes):
-    seq = ""
+def idxes2sent(idxes, loc_idx2word):
+    seq = []
     for idx in idxes:
         if idx2word[idx] == SOS:
             continue
         if idx2word[idx] == EOS:
             break
-        seq += idx2word[idx] + " "
+        seq.append(loc_idx2word[idx])
     # some characters may not be printable if not encode by utf-8
-    return seq.encode('utf-8').decode("utf-8") 
+    return " ".join(seq).encode('utf-8').decode("utf-8") 
 
 def show_attn(input_text, output_text, gold_text, attn):
     """
@@ -194,7 +206,7 @@ def show_attn(input_text, output_text, gold_text, attn):
     plt.savefig("%s/figure/attn/%s.png" % (args.save_path, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
 
-def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
+def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, beam_search=True):
     logp, list_symbols, attns = s2s.summarize(inputs, input_lens, beam_search)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
     if beam_search is False and args.show_attn and args.attn_model != 'none':
@@ -208,21 +220,22 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         """
         symbols = list_symbols[i]
         decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
-        text = idxes2sent(inputs[i].cpu().numpy())
-        prediction = idxes2sent(symbols.cpu().data.numpy())
-        truth = idxes2sent(targets[i].cpu().numpy())
+        text = idxes2sent(inputs[i].cpu().numpy(), loc_idx2word)
+        prediction = idxes2sent(symbols.cpu().data.numpy(), loc_idx2word)
+        truth = idxes2sent(targets[i].cpu().numpy(), loc_idx2word)
         hyps[decode_approach].append(prediction)
         refs[decode_approach].append(truth)
         if beam_search is False and args.show_attn and args.attn_model != 'none':
             # only plot if it's not beam search
             show_attn(text, prediction, truth, attns[i, :, :])
         
-        print("text:", text)
-        print(decode_approach, ":", prediction)
-        print("gt:", truth)
+        print("<Source Text>: %s" % text)
+        print("<%s>: %s" % (decode_approach, prediction))
+        print("<Ground Truth>: %s" % truth)
         print(80 * '-')
         
 def test(model_path, testset, test_size=10000, is_text=True):
+    
     def vectorize(raw_data):
         data_vec = []
         for data in raw_data:

@@ -18,12 +18,12 @@ class PointerNet(nn.Module):
         context = context.squeeze(1)         # B x H
         rnn_output = rnn_output.squeeze(1)   # B x H
 
-        # debugging info
-        print('context size: ', context.size())
-        print('rnn_output size: ', rnn_output.size())
-        print('input_emb size: ', input_emb.size())
+        # # debugging info
+        # print('context: ', type(context), context.size())
+        # print('rnn_output: ', type(rnn_output), rnn_output.size())
+        # print('input_emb: ', type(input_emb), input_emb.size())
 
         gen_input = torch.cat((input_emb, context, rnn_output), 1)
         prob_gen = F.sigmoid(self.generator(gen_input))
-        # print(gen_input.size(), prob_gen.size())
+        # print('prob_gen: ', type(prob_gen), prob_gen.size())
         return prob_gen
