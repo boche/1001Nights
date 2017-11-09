@@ -56,7 +56,7 @@ def next_batch(batch_idx, data):
 
 def mask_loss(logp, target_lens, targets):
     """
-    logp: list of torch tensors, seq x batch x hdim
+    logp: list of torch tensors, seq x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
@@ -68,6 +68,24 @@ def mask_loss(logp, target_lens, targets):
         logp_i = logp[i, :target_lens[i]-1, :] # s x d
         loss += torch.gather(logp_i, 1, idx).sum()
     # -: negative log likelihood
+    return -loss
+
+def another_mask_loss(logp_list, target_lens, targets):
+    """
+    logp_list: list of torch tensors, (seq - 1) x batch x vocab_size
+    target_lens: list of target lens
+    targets: batch x seq
+    """
+    seq = targets.size(1)
+    target_lens = torch.LongTensor(target_lens)
+    use_cuda = logp_list[0].is_cuda
+    target_lens = target_lens.cuda() if use_cuda else target_lens
+    loss = 0
+    # offset 1 due to SOS
+    for i in range(seq - 1):
+        idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
+        logp = torch.gather(logp_list[i], 1, idx).view(-1)
+        loss += logp[target_lens > i + 1].sum()
     return -loss
 
 def build_local_index(inputs, targets):
@@ -134,13 +152,15 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
-        for inputs, targets, input_lens, target_lens in train_data[:5000]:
+        s2s.requires_grad = True
+        for inputs, targets, input_lens, target_lens in train_data:
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
             
             logp = s2s(inputs, input_lens, targets, oov_size)
-            loss = mask_loss(logp, target_lens, targets)
+            # loss = mask_loss(logp, target_lens, targets)
+            loss = another_mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()
             loss.backward()
@@ -148,21 +168,26 @@ def train(data):
             s2s_opt.step()
             epoch_loss += loss.data[0]
             batch_idx += 1
+
             if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
                     time.time() - ts, loss.data[0]))
+                s2s.train(False)
+                s2s.requires_grad = False
                 summarize(s2s, inputs, input_lens, targets, target_lens,
                         loc_idx2word, beam_search = False)
                 sys.stdout.flush()
         train_loss = epoch_loss / sum_len
 
         s2s.train(False)
+        s2s.requires_grad = False
         epoch_loss, sum_len = 0, 0
         for inputs, targets, input_lens, target_lens in test_data:
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx) 
             logp = s2s(inputs, input_lens, targets, oov_size)
-            loss = mask_loss(logp, target_lens, targets)
+            # loss = mask_loss(logp, target_lens, targets)
+            loss = another_mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             epoch_loss += loss.data[0]
         print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
@@ -249,6 +274,7 @@ def test(model_path, testset, test_size=10000, is_text=True):
     # switch to CPU for testing 
     s2s.use_cuda = False   
     s2s.train(False)
+    s2s.requires_grad = False
     
     # transfrom into indice representation for testing 
     if is_text:
