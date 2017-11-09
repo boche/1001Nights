@@ -52,18 +52,20 @@ def next_batch(batch_idx, data):
 
 def mask_loss(logp, target_lens, targets):
     """
-    logp: list of torch tensors, seq x batch x hdim
+    logp_list: list of torch tensors, (seq - 1) x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
-    logp = torch.stack(logp).transpose(0, 1) # after operation, b x s x d
+    seq = targets.size(1)
+    target_lens = torch.LongTensor(target_lens)
+    use_cuda = logp_list[0].is_cuda
+    target_lens = target_lens.cuda() if use_cuda else target_lens
     loss = 0
-    for i in range(len(target_lens)):
-        # the first one is SOS, so skip it
-        idx = Variable(targets[i][1:target_lens[i]].view(-1, 1)) # s x 1
-        logp_i = logp[i, :target_lens[i]-1, :] # s x d
-        loss +=  torch.gather(logp_i, 1, idx).sum()
-    # -: negative log likelihood
+    # offset 1 due to SOS
+    for i in range(seq - 1):
+        idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
+        logp = torch.gather(logp_list[i], 1, idx).view(-1)
+        loss += logp[target_lens > i + 1].sum()
     return -loss
 
 def train(data):
