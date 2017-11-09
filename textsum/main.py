@@ -47,20 +47,22 @@ def next_batch(batch_idx, data):
     targets = [pad_seq(y, max(target_lens)) for y in targets]
     return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
 
-def mask_loss(logp, target_lens, targets):
+def mask_loss(logp_list, target_lens, targets):
     """
-    logp: list of torch tensors, seq x batch x hdim
+    logp_list: list of torch tensors, (seq - 1) x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
-    logp = torch.stack(logp).transpose(0, 1) # after operation, b x s x d
+    seq = targets.size(1)
+    target_lens = torch.LongTensor(target_lens)
+    use_cuda = logp_list[0].is_cuda
+    target_lens = target_lens.cuda() if use_cuda else target_lens
     loss = 0
-    for i in range(len(target_lens)):
-        # the first one is SOS, so skip it
-        idx = Variable(targets[i][1:target_lens[i]].view(-1, 1)) # s x 1
-        logp_i = logp[i, :target_lens[i]-1, :] # s x d
-        loss +=  torch.gather(logp_i, 1, idx).sum()
-    # -: negative log likelihood
+    # offset 1 due to SOS
+    for i in range(seq - 1):
+        idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
+        logp = torch.gather(logp_list[i], 1, idx).view(-1)
+        loss += logp[target_lens > i + 1].sum()
     return -loss
 
 def train(data):
@@ -87,7 +89,7 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
-        for inputs, targets, input_lens, target_lens in train_data[:5000]:
+        for inputs, targets, input_lens, target_lens in train_data:
             if args.use_cuda:
                 targets = targets.cuda()
                 inputs = inputs.cuda()
@@ -247,7 +249,7 @@ if __name__ == "__main__":
     argparser.add_argument('--model_fpat', type=str, default="saved_model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=128)
+    argparser.add_argument('--batch_size', type=int, default=256)
     argparser.add_argument('--emb_size', type=int, default=128)
     argparser.add_argument('--hidden_size', type=int, default=128)
     argparser.add_argument('--nlayers', type=int, default=2)
