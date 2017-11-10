@@ -52,14 +52,14 @@ class DecoderRNN(nn.Module):
         # Final output layer (next word prediction) using the RNN hidden state and context vector
         concat_input = torch.cat((rnn_output, context), 2).squeeze(1)
         concat_output = F.tanh(self.concat(concat_input))
-        logp = None
+        p_gens = None
         
         if self.use_pointer_net:
             p_vocab = F.softmax(self.out(concat_output))
-            logp = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw)
+            logp, p_gen = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw)
         else:
             logp = F.log_softmax(self.out(concat_output))
-        return logp, h, concat_output, attn_weights
+        return logp, h, concat_output, attn_weights, p_gen
     
 
     def getPointerOutput(self, p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw):
@@ -71,36 +71,29 @@ class DecoderRNN(nn.Module):
         p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1, broadcastable
         self.extVocab_size = self.output_size + self.oov_size
         self.use_cuda = p_gen.data.is_cuda
+        
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
-        p_gen_vocab, p_gen_oov = p_gen * p_vocab, None
+        p_gen_vocab = p_gen * p_vocab
         if self.oov_size != 0:
             p_gen_oov = Variable(torch.zeros(self.batch_size, self.oov_size))
             p_gen_oov = p_gen_oov.cuda() if self.use_cuda else p_gen_oov
-            # print('p_gen_vocab: ', type(p_gen_vocab), p_gen_vocab.data.is_cuda)
-            # print('p_gen_oov: ', type(p_gen_oov), p_gen_oov.data.is_cuda)
         p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) if self.oov_size else p_gen_vocab   # B x ExtV
-        # p_extVocab = torch.cat([p_gen_vocab, Variable(torch.zeros(self.batch_size, self.oov_size))], 1) # B x ExtV
         
         # compute probability to copy from source: (1 - p(gen)) * P(w)
         p_copy_src = (1 - p_gen) * attn_weights.squeeze(1)
         p_extVocab.scatter_add_(1, Variable(inputs_raw), p_copy_src)
-        # print('p_extVocab: ', type(p_extVocab), p_extVocab.size())
         
         # # experiment for scatter_add()
         # x = Variable(torch.Tensor([[9,10,11,12], [2,3,0,0]]))
         # idx = Variable(torch.LongTensor([[4,3,4,7], [1,1,2,2]]))
         # out = Variable(torch.randn(2,8))
-        # print(x.data.numpy())
-        # print(idx.data.numpy())
-        # print(out.data.numpy())
         # out.scatter_add_(1, idx, x)
-        # print(out.data.numpy())
         
         # # assert sum of probs of each instance is 1
         # p_sum = torch.sum(p_extVocab, 1)
         # print(p_sum.data.numpy())
 
-        return torch.log(p_extVocab)
+        return torch.log(p_extVocab), p_gen
     
     
     def forward(self, target, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size):
@@ -126,14 +119,14 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, last_output, _ = self.getAttnOutput(batch_input, last_output,
+                logp, h, last_output, _, _ = self.getAttnOutput(batch_input, last_output,
                                               h, encoder_output, inputs_raw, input_lens)
             
             batch_output.append(logp)
             if use_teacher_forcing:
                 batch_input = Variable(target[: ,t])
                 if self.use_pointer_net:
-                    # set oov words to <UNK> (index = 2) for encoder
+                    # set oov words to <UNK> (index = 2) for decoder input 
                     batch_input[batch_input >= self.vocab_size] = 2
             else:
                 _, batch_input = torch.max(logp, 1, keepdim=False)
@@ -150,8 +143,8 @@ class DecoderRNN(nn.Module):
         use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
             batch_input = batch_input.cuda()
-        batch_output, batch_attn = [], []
-        batch_symbol = [batch_input]
+        batch_output, batch_attn, batch_p_gen = [], [], []
+        batch_symbol. p_gens = [batch_input], None
         last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
         use_cuda = next(self.parameters()).data.is_cuda
         if use_cuda:
@@ -165,14 +158,15 @@ class DecoderRNN(nn.Module):
                 xout = self.out(rnn_output).squeeze(1)
                 logp = F.log_softmax(xout)
             else:
-                logp, h, last_output, attn_weights = self.getAttnOutput(
+                logp, h, last_output, attn_weights, p_gens = self.getAttnOutput(
                         batch_input, last_output, h, encoder_output, inputs_raw, input_lens)
                 batch_attn.append(attn_weights.squeeze(1))
             batch_output.append(logp)
+            batch_p_gen.append(p_gens)
 
             _, batch_input = torch.max(logp, 1, keepdim=False)
             batch_symbol.append(batch_input)
-        return batch_output, batch_symbol, batch_attn
+        return batch_output, batch_symbol, batch_attn, batch_p_gen
     
     def summarize_bs(self, encoder_hidden, max_seq_len, encoder_output, input_lens, beam_size=4):
         batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)

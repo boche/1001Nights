@@ -23,7 +23,7 @@ class Seq2Seq(nn.Module):
                 self.nlayers, self.dropout, self.rnn_model, self.use_pointer_net)
         self.decoder = DecoderRNN(self.vocab_size, self.emb, self.hidden_size,
                 self.nlayers, self.teach_ratio, self.dropout, self.rnn_model,
-                self.attn_model, self.use_pointer_net)
+                self.use_pointer_net, self.attn_model)
 
     def forward(self, inputs, input_lens, targets, oov_size):
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
@@ -37,6 +37,6 @@ class Seq2Seq(nn.Module):
             logp, symbols, attns = self.decoder.summarize_bs(encoder_hidden,
                     self.max_title_len, encoder_output, input_lens)
         else:
-            logp, symbols, attns = self.decoder.summarize(encoder_hidden,
+            logp, symbols, attns, p_gens = self.decoder.summarize(encoder_hidden,
                     self.max_title_len, encoder_output, inputs, input_lens)
-        return logp, symbols, attns
+        return logp, symbols, attns, p_gens

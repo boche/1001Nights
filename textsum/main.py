@@ -54,35 +54,19 @@ def next_batch(batch_idx, data):
         targets = torch.LongTensor(targets)
     return inputs, targets, input_lens, target_lens
 
-def mask_loss(logp, target_lens, targets):
+def mask_loss(logp_list, target_lens, targets):
     """
-    logp: list of torch tensors, seq x batch x vocab_size
+    logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
-    logp = torch.stack(logp).transpose(0, 1) # after operation, b x s x d
-    loss = 0
-    for i in range(len(target_lens)):
-        # the first one is SOS, so skip it
-        idx = Variable(targets[i][1:target_lens[i]].view(-1, 1)) # s x 1
-        logp_i = logp[i, :target_lens[i]-1, :] # s x d
-        loss += torch.gather(logp_i, 1, idx).sum()
-    # -: negative log likelihood
-    return -loss
-
-def another_mask_loss(logp_list, target_lens, targets):
-    """
-    logp_list: list of torch tensors, (seq - 1) x batch x vocab_size
-    target_lens: list of target lens
-    targets: batch x seq
-    """
-    seq = targets.size(1)
+    seq_len = targets.size(1)
     target_lens = torch.LongTensor(target_lens)
     use_cuda = logp_list[0].is_cuda
     target_lens = target_lens.cuda() if use_cuda else target_lens
     loss = 0
     # offset 1 due to SOS
-    for i in range(seq - 1):
+    for i in range(seq_len - 1):
         idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
         logp = torch.gather(logp_list[i], 1, idx).view(-1)
         loss += logp[target_lens > i + 1].sum()
@@ -153,14 +137,13 @@ def train(data):
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
         s2s.requires_grad = True
-        for inputs, targets, input_lens, target_lens in train_data:
+        for inputs, targets, input_lens, target_lens in train_data[:500]:
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
             
             logp = s2s(inputs, input_lens, targets, oov_size)
-            # loss = mask_loss(logp, target_lens, targets)
-            loss = another_mask_loss(logp, target_lens, targets)
+            loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()
             loss.backward()
@@ -186,8 +169,7 @@ def train(data):
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx) 
             logp = s2s(inputs, input_lens, targets, oov_size)
-            # loss = mask_loss(logp, target_lens, targets)
-            loss = another_mask_loss(logp, target_lens, targets)
+            loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             epoch_loss += loss.data[0]
         print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
@@ -232,7 +214,7 @@ def show_attn(input_text, output_text, gold_text, attn):
     plt.close()
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, beam_search=True):
-    logp, list_symbols, attns = s2s.summarize(inputs, input_lens, beam_search)
+    logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, beam_search)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
     if beam_search is False and args.show_attn and args.attn_model != 'none':
         attns = torch.stack(attns).transpose(0, 1) # b x target_s x input_s
@@ -256,8 +238,7 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, beam_
         
         print("<Source Text>: %s" % text)
         print("<Ground Truth>: %s" % truth)
-        print("<%s>: %s" % (decode_approach, prediction))
-        print(80 * '-')
+        print("<%s>: %s\n%s" % (decode_approach, prediction, 80 * '-'))
 
 def test(model_path, testset, test_size=10000, is_text=True):
     
@@ -310,7 +291,7 @@ def vec2text_from_full(test_size=500):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--vecdata', type=str, default=
-            # "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
         "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV.pkl")
     
     argparser.add_argument('--save_path', type=str, default=
@@ -319,7 +300,7 @@ if __name__ == "__main__":
             "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/test/test_data.pkl")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
     argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
-    argparser.add_argument('--model_fpat', type=str, default="saved_model/s2s-s%s-e%02d.model")
+    argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
     argparser.add_argument('--batch_size', type=int, default=128)

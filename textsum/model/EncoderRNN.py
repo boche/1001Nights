@@ -20,20 +20,17 @@ class EncoderRNN(nn.Module):
             self.rnn = nn.LSTM(input_size=emb_size, hidden_size = hidden_size,
                 dropout = dropout, num_layers = nlayers, batch_first = True)
 
-    def forward(self, inputs, input_lengths):
+    def forward(self, inputs, input_lens):
         """
         inputs: batch x seq_len
         """
         # inputs_emb = self.dropout(self.emb(Variable(inputs)))
-        
         # set oov words to <UNK> (index = 2) for encoder
         if self.use_pointer_net:
             inputs[inputs >= self.vocab_size] = 2
         
         inputs_emb = self.emb(Variable(inputs))
-        inputs_pack = nn.utils.rnn.pack_padded_sequence(inputs_emb, input_lengths,
-                batch_first=True)
+        inputs_pack = nn.utils.rnn.pack_padded_sequence(inputs_emb, input_lens, batch_first=True)
         output_pack, hidden = self.rnn(inputs_pack)
-        output, _ = nn.utils.rnn.pad_packed_sequence(output_pack,
-                batch_first=True)
+        output, _ = nn.utils.rnn.pad_packed_sequence(output_pack, batch_first=True)
         return output, hidden
