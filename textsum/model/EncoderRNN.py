@@ -10,15 +10,13 @@ class EncoderRNN(nn.Module):
         self.hidden_size = hidden_size
         # self.dropout = nn.Dropout(dropout)
         self.emb = emb
-        emb_size = self.emb.weight.size(1)
         self.use_pointer_net = use_pointer_net
-
-        if rnn_model == 'gru':
-            self.rnn = nn.GRU(input_size=emb_size, hidden_size = hidden_size,
+        
+        emb_size = self.emb.weight.size(1)
+        rnn_class = nn.GRU if rnn_model == 'gru' else nn.LSTM
+        self.rnn = rnn_class(input_size=emb_size, hidden_size = hidden_size, 
                 dropout = dropout, num_layers = nlayers, batch_first = True)
-        else:
-            self.rnn = nn.LSTM(input_size=emb_size, hidden_size = hidden_size,
-                dropout = dropout, num_layers = nlayers, batch_first = True)
+        
 
     def forward(self, inputs, input_lens):
         """
