@@ -291,7 +291,7 @@ def vec2text_from_full(test_size=500):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--vecdata', type=str, default=
-            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+            # "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
         "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV.pkl")
     
     argparser.add_argument('--save_path', type=str, default=
