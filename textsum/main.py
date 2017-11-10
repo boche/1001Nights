@@ -24,13 +24,10 @@ def group_data(data):
     """
     data: list of (docid, head, body)
     """
-    group_data = []
     # sort by input length, group inputs with close length in a batch
     sorted_data = sorted(data, key = lambda x: len(x[2]), reverse = True)
     nbatches = (len(data) + args.batch_size - 1) // args.batch_size
-    for batch_idx in range(nbatches):
-        group_data.append(next_batch(batch_idx, sorted_data))
-    return group_data
+    return [next_batch(i, sorted_data) for i in range(nbatches)]
 
 def next_batch(batch_idx, data):
     targets, inputs = [], []
@@ -50,20 +47,22 @@ def next_batch(batch_idx, data):
     targets = [pad_seq(y, max(target_lens)) for y in targets]
     return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
 
-def mask_loss(logp, target_lens, targets):
+def mask_loss(logp_list, target_lens, targets):
     """
-    logp: list of torch tensors, seq x batch x hdim
+    logp_list: list of torch tensors, (seq - 1) x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
-    logp = torch.stack(logp).transpose(0, 1) # after operation, b x s x d
+    seq = targets.size(1)
+    target_lens = torch.LongTensor(target_lens)
+    use_cuda = logp_list[0].is_cuda
+    target_lens = target_lens.cuda() if use_cuda else target_lens
     loss = 0
-    for i in range(len(target_lens)):
-        # the first one is SOS, so skip it
-        idx = Variable(targets[i][1:target_lens[i]].view(-1, 1)) # s x 1
-        logp_i = logp[i, :target_lens[i]-1, :] # s x d
-        loss +=  torch.gather(logp_i, 1, idx).sum()
-    # -: negative log likelihood
+    # offset 1 due to SOS
+    for i in range(seq - 1):
+        idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
+        logp = torch.gather(logp_list[i], 1, idx).view(-1)
+        loss += logp[target_lens > i + 1].sum()
     return -loss
 
 def train(data):
@@ -90,7 +89,7 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
         s2s.train(True)
-        for inputs, targets, input_lens, target_lens in train_data[:5000]:
+        for inputs, targets, input_lens, target_lens in train_data:
             if args.use_cuda:
                 targets = targets.cuda()
                 inputs = inputs.cuda()
@@ -135,7 +134,7 @@ def idxes2sent(idxes):
             break
         seq += idx2word[idx] + " "
     # some characters may not be printable if not encode by utf-8
-    return seq.encode('utf-8').decode("utf-8") 
+    return seq.encode('utf-8').decode("utf-8")
 
 def show_attn(input_text, output_text, gold_text, attn):
     """
@@ -184,12 +183,12 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         if beam_search is False and args.show_attn and args.attn_model != 'none':
             # only plot if it's not beam search
             show_attn(text, prediction, truth, attns[i, :, :])
-        
+
         print("text:", text)
         print(decode_approach, ":", prediction)
         print("gt:", truth)
         print(80 * '-')
-        
+
 def test(model_path, testset, is_text=True):
     def vectorize(raw_data):
         data_vec = []
@@ -199,16 +198,16 @@ def test(model_path, testset, is_text=True):
             body = [word2idx.get(w, word2idx[UNK]) for w in body[:args.max_text_len]]
             data_vec.append((docid, headline, body))
         return data_vec
-    
+
     s2s = torch.load(model_path, map_location=lambda storage, loc: storage)
-    # switch to CPU for testing 
-    s2s.use_cuda = False   
+    # switch to CPU for testing
+    s2s.use_cuda = False
     s2s.train(False)
-    
-    # transfrom into indice representation for testing 
+
+    # transfrom into indice representation for testing
     if is_text:
         testset = vectorize(testset)
-    
+
     random.seed(15213)
     random.shuffle(testset)
     for _, headline, body in testset[:args.test_size]:
@@ -216,7 +215,7 @@ def test(model_path, testset, is_text=True):
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
-        
+
     rouge = Rouge()
     for decode_approach in ["Greedy Search", "Beam Search"]:
         print("Decode Approach: {}".format(decode_approach))
@@ -250,7 +249,7 @@ if __name__ == "__main__":
     argparser.add_argument('--model_fpat', type=str, default="saved_model/s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=128)
+    argparser.add_argument('--batch_size', type=int, default=256)
     argparser.add_argument('--emb_size', type=int, default=128)
     argparser.add_argument('--hidden_size', type=int, default=128)
     argparser.add_argument('--nlayers', type=int, default=2)
@@ -275,10 +274,10 @@ if __name__ == "__main__":
     word2idx = vecdata["word2idx"]
     idx2word = vecdata["idx2word"]
     args.vocab_size = len(word2idx)
-    
-    # for evaluation 
+
+    # for evaluation
     hyps, refs = {'Greedy Search':[], 'Beam Search':[]}, {'Greedy Search':[], 'Beam Search':[]}
-    
+
     print("Running mode: {} model...".format(args.mode))
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
@@ -286,7 +285,7 @@ if __name__ == "__main__":
         model_path = args.save_path + args.model_name
         testset = None
         if args.data_src == 'xml':
-            testset = vec2text_from_full() 
+            testset = vec2text_from_full()
         if args.data_src == 'std':
             testset = pickle.load(open(args.test_fpath, 'rb'))
         test(model_path, testset)
