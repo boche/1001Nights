@@ -57,7 +57,7 @@ class DecoderRNN(nn.Module):
 
     def initLastOutput(self, batch_size):
         use_cuda = next(self.parameters()).data.is_cuda
-        last_output = Variable(torch.Tensor(torch.zeros(batch_size, self.hidden_size)))
+        last_output = Variable(torch.zeros(batch_size, self.hidden_size))
         if use_cuda:
             last_output = last_output.cuda()
         return last_output
