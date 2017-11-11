@@ -50,7 +50,7 @@ def next_batch(batch_idx, data):
     targets = [pad_seq(y, max(target_lens)) for y in targets]
     return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
 
-def mask_loss(logp, target_lens, targets):
+def mask_loss(logp_list, target_lens, targets):
     """
     logp_list: list of torch tensors, (seq - 1) x batch x vocab_size
     target_lens: list of target lens
