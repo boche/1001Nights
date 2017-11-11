@@ -21,7 +21,8 @@ class DecoderRNN(nn.Module):
         self.attn_model = attn_model
         self.rnn_model = rnn_model
         self.use_pointer_net = use_pointer_net
-
+        
+        self.IDX_UNK = 2   # global index for <UNK>
         self.emb = emb
         # self.dropout = nn.Dropout(dropout)
         emb_size = self.emb.weight.size(1)
@@ -67,13 +68,14 @@ class DecoderRNN(nn.Module):
         attn_weights: B x 1 x S
         """
         p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1, broadcastable
-        self.extVocab_size = self.output_size + self.oov_size
+        batch_size = p_gen.size(0)
+        extVocab_size = self.output_size + self.oov_size
         self.use_cuda = p_gen.data.is_cuda
         
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
         p_gen_vocab = p_gen * p_vocab
         if self.oov_size != 0:
-            p_gen_oov = Variable(torch.zeros(self.batch_size, self.oov_size))
+            p_gen_oov = Variable(torch.zeros(batch_size, self.oov_size))
             p_gen_oov = p_gen_oov.cuda() if self.use_cuda else p_gen_oov
         p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) if self.oov_size else p_gen_vocab   # B x ExtV
         
@@ -109,13 +111,13 @@ class DecoderRNN(nn.Module):
     
     def forward(self, target, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size):
         self.oov_size = oov_size
-        self.batch_size, max_seq_len = target.size()
+        batch_size, max_seq_len = target.size()
         h = encoder_hidden
         batch_input = Variable(target[:, 0]) #SOS, b
         batch_output, batch_p_gens = [], []
         
         if self.attn_model != 'none':
-            last_output = self.initLastOutput(self.batch_size)
+            last_output = self.initLastOutput(batch_size)
         use_teacher_forcing = random.random() < self.teach_ratio
 
         for t in range(1, max_seq_len):
@@ -130,8 +132,8 @@ class DecoderRNN(nn.Module):
             if use_teacher_forcing:
                 batch_input = Variable(target[: ,t])
                 if self.use_pointer_net:
-                    # set oov words to <UNK> (index = 2) for decoder input
-                    batch_input[batch_input >= self.vocab_size] = 2
+                    # set oov words to <UNK> for decoder input
+                    batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
             else:
                 _, batch_input = torch.max(logp, 1, keepdim=False)
                 # TO DO: sample for pointer net (if sampled word is oov)
@@ -162,6 +164,8 @@ class DecoderRNN(nn.Module):
 
             _, batch_input = torch.max(logp, 1, keepdim=False)
             batch_symbol.append(batch_input)
+            batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
+
         return batch_output, batch_symbol, batch_attn, batch_p_gen
 
     def summarize_bs(self, encoder_hidden, max_seq_len, encoder_output, input_lens, beam_size=4):
@@ -189,7 +193,7 @@ class DecoderRNN(nn.Module):
             res, ind = logp.topk(beam_size)
             for i in range(ind.size(1)):
                 word = ind[0][i]
-                # if word.data.numpy()[0] == 2: # skip if it's UNK
+                # if word.data.numpy()[0] == self.IDX_UNK: # skip if it's UNK
                 #    continue
                 current_logp = last_logp + logp.data.numpy()[0][word.data.numpy()[0]]
                 while len(partial_candidates) + 1 > beam_size and current_logp > partial_candidates[0][0]:

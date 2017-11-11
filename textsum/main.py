@@ -77,7 +77,7 @@ def build_local_index(inputs, targets):
     inps, tgts = [], []
     loc_word2idx, loc_idx2word = {}, {}
     loc_idx = args.vocab_size  # size of global index
-    
+
     for inp, tgt in zip(inputs, targets):
         for i, word in enumerate(inp):
             if isinstance(word, str):
@@ -86,15 +86,15 @@ def build_local_index(inputs, targets):
                     loc_idx2word[loc_idx] = word
                     loc_idx +=1
                 inp[i] = loc_word2idx[word]
-                
+ 
         for i, word in enumerate(tgt):
             # an out-of-vocabulary word that only exists in target will transform to UNK
             if isinstance(word, str):
                 tgt[i] = loc_word2idx[word] if word in loc_word2idx else word2idx[UNK]
-                
+
         inps.append(inp)
         tgts.append(tgt)
-        
+
     inputs = torch.LongTensor(inps)
     targets = torch.LongTensor(tgts)
     return inputs, targets, loc_word2idx, loc_idx2word
@@ -135,7 +135,7 @@ def train(data):
         epoch_p_gen = 0
         s2s.train(True)
         s2s.requires_grad = True
-        for inputs, targets, input_lens, target_lens in train_data[:5000]:
+        for inputs, targets, input_lens, target_lens in train_data[:50]:
         # for inputs, targets, input_lens, target_lens in train_data:
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=128)
+    argparser.add_argument('--batch_size', type=int, default=256)
     argparser.add_argument('--emb_size', type=int, default=64)
     argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
