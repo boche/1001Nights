@@ -58,6 +58,7 @@ def mask_loss(logp_list, target_lens, targets):
     targets: batch x seq
     """
     seq_len = targets.size(1)
+
     target_lens = torch.LongTensor(target_lens)
     use_cuda = logp_list[0].is_cuda
     target_lens = target_lens.cuda() if use_cuda else target_lens
@@ -313,12 +314,14 @@ if __name__ == "__main__":
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
-    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
+
+    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot', 'concat'], default='none')
     argparser.add_argument('--visualize', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.001)
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
     argparser.add_argument('--use_pointer_net', action='store_true', default = False)
+    argparser.add_argument('--bidir', action='store_true', default = False)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
