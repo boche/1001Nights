@@ -112,7 +112,7 @@ class DecoderRNN(nn.Module):
         self.batch_size, max_seq_len = target.size()
         h = encoder_hidden
         batch_input = Variable(target[:, 0]) #SOS, b
-        batch_output = []
+        batch_output, batch_p_gens = [], []
         
         if self.attn_model != 'none':
             last_output = self.initLastOutput(self.batch_size)
@@ -122,10 +122,11 @@ class DecoderRNN(nn.Module):
             if self.attn_model == 'none':
                 logp, h = self.getRNNOutput(batch_input, h)
             else:
-                logp, h, last_output, _, _ = self.getAttnOutput(batch_input, last_output,
+                logp, h, last_output, _, p_gen = self.getAttnOutput(batch_input, last_output,
                                               h, encoder_output, inputs_raw, input_lens)
             
             batch_output.append(logp)
+            batch_p_gens.append(p_gen)
             if use_teacher_forcing:
                 batch_input = Variable(target[: ,t])
                 if self.use_pointer_net:
@@ -135,7 +136,7 @@ class DecoderRNN(nn.Module):
                 _, batch_input = torch.max(logp, 1, keepdim=False)
                 # TO DO: sample for pointer net (if sampled word is oov)
                 
-        return batch_output
+        return batch_output, batch_p_gens
 
     def summarize(self, encoder_hidden, max_seq_len, encoder_output, inputs_raw, input_lens):
         batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
@@ -147,18 +148,18 @@ class DecoderRNN(nn.Module):
         if use_cuda:
             batch_input = batch_input.cuda()
         batch_output, batch_attn, batch_p_gen = [], [], []
-        batch_symbol, p_gens = [batch_input], None
+        batch_symbol, p_gen = [batch_input], None
         last_output = self.initLastOutput(batch_size)
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
                 logp, h = self.getRNNOutput(batch_input, h)
             else:
-                logp, h, last_output, attn_weights, p_gens = self.getAttnOutput(
+                logp, h, last_output, attn_weights, p_gen = self.getAttnOutput(
                         batch_input, last_output, h, encoder_output, inputs_raw, input_lens)
                 batch_attn.append(attn_weights.squeeze(1))
             batch_output.append(logp)
-            batch_p_gen.append(p_gens)
+            batch_p_gen.append(p_gen)
 
             _, batch_input = torch.max(logp, 1, keepdim=False)
             batch_symbol.append(batch_input)

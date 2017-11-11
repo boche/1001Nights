@@ -132,6 +132,7 @@ def train(data):
         batch_idx = 0
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
+        epoch_p_gen = 0
         s2s.train(True)
         s2s.requires_grad = True
         for inputs, targets, input_lens, target_lens in train_data[:500]:
@@ -139,7 +140,7 @@ def train(data):
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
             
-            logp = s2s(inputs, input_lens, targets, oov_size)
+            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()
@@ -147,6 +148,7 @@ def train(data):
             # torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
             s2s_opt.step()
             epoch_loss += loss.data[0]
+            # epoch_p_gen += mask_generation_prob(p_gen)
             batch_idx += 1
 
             if batch_idx % 50 == 0:
@@ -165,7 +167,7 @@ def train(data):
         for inputs, targets, input_lens, target_lens in test_data:
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx) 
-            logp = s2s(inputs, input_lens, targets, oov_size)
+            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             epoch_loss += loss.data[0]
