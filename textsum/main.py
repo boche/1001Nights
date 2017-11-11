@@ -178,7 +178,7 @@ def train(data):
 
 def idxes2sent(idxes, loc_idx2word):
     seq = []
-    for idx in idxes:
+    for idx in idxes.numpy():
         if idx2word[idx] == SOS:
             continue
         if idx2word[idx] == EOS:
@@ -187,7 +187,7 @@ def idxes2sent(idxes, loc_idx2word):
     # some characters may not be printable if not encode by utf-8
     return " ".join(seq).encode('utf-8').decode("utf-8")
 
-def visualize(input_text, output_text, gold_text, attn):
+def visualization(input_text, output_text, gold_text, attn):
     """
     attn: output_s x input_s
     """
@@ -227,13 +227,13 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, beam_
         1 instance.
         """
         symbols = list_symbols[i]
-        srcText = idxes2sent(inputs[i].cpu().numpy(), loc_idx2word)
-        prediction = idxes2sent(symbols.cpu().data.numpy(), loc_idx2word)
-        truth = idxes2sent(targets[i].cpu().numpy(), loc_idx2word)
+        srcText = idxes2sent(inputs[i].cpu(), loc_idx2word)
+        prediction = idxes2sent(symbols.cpu().data, loc_idx2word)
+        truth = idxes2sent(targets[i].cpu(), loc_idx2word)
         hyps[decode_approach].append(prediction)
         refs[decode_approach].append(truth)
         if visualize:
-            visualize(srcText, prediction, truth, attns[i, :, :])
+            visualization(srcText, prediction, truth, attns[i, :, :])
 
         print("<Source Text>: %s" % srcText)
         print("<Ground Truth>: %s" % truth)
