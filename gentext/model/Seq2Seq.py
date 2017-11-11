@@ -12,7 +12,7 @@ class Seq2Seq(nn.Module):
         self.sent_layers = args.sent_layers
         self.hidden_size = args.hidden_size
         self.dropout = args.dropout
-        self.max_text_len = args.max_text_len
+        self.max_sent_len = args.max_sent_len
         self.rnn_model = args.rnn_model
 
         # encoder and decoder share a common embedding layer
@@ -29,5 +29,12 @@ class Seq2Seq(nn.Module):
                 inputs_eos_indices, is_volatile)
         return self.decoder(targets, targets_kws, sent_state, targets_len)
 
-    def sample(self):
-        pass
+    def sample(self, batch, is_volatile):
+        (inputs, targets, inputs_eos_indices, targets_eos_indices,
+                targets_kws, inputs_len, targets_len) = batch
+        word_output, sent_output, sent_state = self.encoder(inputs, inputs_len,
+                inputs_eos_indices, is_volatile)
+        targets_kws = targets_kws.gather(1, targets_eos_indices) # b x nsent
+        # only sample the first sequence
+        return self.decoder.sample(sent_state[:, 0, :].unsqueeze(1).contiguous()
+                , self.max_sent_len, targets_kws[0, :].view(1, -1))

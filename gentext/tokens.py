@@ -1,3 +1,3 @@
-EOS = "<EOS>"
 SOS = "<SOS>"
+EOS = "<EOS>"
 UNK = "<UNK>"
