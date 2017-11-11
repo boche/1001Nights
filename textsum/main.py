@@ -135,7 +135,7 @@ def train(data):
         epoch_p_gen = 0
         s2s.train(True)
         s2s.requires_grad = True
-        for inputs, targets, input_lens, target_lens in train_data[:500]:
+        for inputs, targets, input_lens, target_lens in train_data[:5000]:
         # for inputs, targets, input_lens, target_lens in train_data:
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)

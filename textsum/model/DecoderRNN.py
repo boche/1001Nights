@@ -102,7 +102,7 @@ class DecoderRNN(nn.Module):
         return logp, h
 
     def initLastOutput(self, batch_size):
-        last_output = Variable(torch.zeros(batch_size, self.hidden_size)
+        last_output = Variable(torch.zeros(batch_size, self.hidden_size))
         if next(self.parameters()).data.is_cuda:
             last_output = last_output.cuda()
         return last_output
