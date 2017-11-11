@@ -25,7 +25,7 @@ class DecoderRNN(nn.Module):
         targets_kws: batch x seq_len, keyword index, LongTensor
         sent_state: nl x b x h, tuple if lstm
         """
-        batch_size, seq_len = targets.size()
+        seq_len = targets.size(1)
         word_state = sent_state
         nl, _, hidden_size = sent_state.size()
         logp_list = []
@@ -58,14 +58,14 @@ class DecoderRNN(nn.Module):
         res = []
         use_cuda = sent_state.is_cuda
         nsent = target_kws.size(1)
-        last_word = Variable(torch.LongTensor([self.SOS_IDX])) 
+        last_word = Variable(torch.LongTensor([self.SOS_IDX]))
         last_word = last_word.cuda() if use_cuda else last_word
 
         for s in range(nsent):
             word_state = sent_state
             keyword = Variable(target_kws[:, s])
             last_word_idx = 0
-            for i in range(max_sent_len):
+            for _ in range(max_sent_len):
                 input_emb = self.dropout(torch.cat((self.emb(keyword), self.emb(
                     last_word)), 1)).unsqueeze(1) # -> 1 x 1 x 2e
                 word_output, word_state = self.word_rnn(input_emb, word_state)

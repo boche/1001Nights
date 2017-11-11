@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from .EncoderRNN import EncoderRNN
 from .DecoderRNN import DecoderRNN

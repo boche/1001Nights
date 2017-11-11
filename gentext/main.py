@@ -6,7 +6,6 @@ import time
 import pickle
 import torch
 from tokens import *
-from preprocess import show_text
 from model import Seq2Seq
 
 def pad_seq(seq, max_length):
@@ -27,9 +26,9 @@ def group_data(docs):
 def extend_roots(roots, eos_indices):
     ext_roots = []
     start_idx = -1
-    for i in range(len(roots)):
+    for i, root in enumerate(roots):
         end_idx = eos_indices[i]
-        ext_roots += [roots[i]] * (end_idx - start_idx)
+        ext_roots += [root] * (end_idx - start_idx)
         start_idx = end_idx
     return ext_roots
 
@@ -120,7 +119,7 @@ def train(data, identifier):
 
         s2s.train(False)
         epoch_loss, sum_len = 0, 0
-        for batch in test_data:
+        for batch in val_data:
             if args.use_cuda:
                 batch = tuple(x.cuda() if isinstance(x, torch.LongTensor) else x
                         for x in batch)
@@ -138,12 +137,12 @@ def train(data, identifier):
 def test(test_data):
     s2s = torch.load(args.data_path + args.test_model, map_location=
             lambda storage, loc: storage)
-    s2s.use_cuda = False    # switch to CPU for testing   
+    s2s.use_cuda = False    # switch to CPU for testing
     s2s.train(False)
 
-    for i in range(len(test_data)):
+    for i, batch in enumerate(test_data):
         print("Test instance %d" % (i+1))
-        sample(s2s, test_data[i])
+        sample(s2s, batch)
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
