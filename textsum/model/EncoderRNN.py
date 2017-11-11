@@ -16,7 +16,6 @@ class EncoderRNN(nn.Module):
         rnn_class = nn.GRU if rnn_model == 'gru' else nn.LSTM
         self.rnn = rnn_class(input_size=emb_size, hidden_size = hidden_size, 
                 dropout = dropout, num_layers = nlayers, batch_first = True)
-        
 
     def forward(self, inputs, input_lens):
         """
