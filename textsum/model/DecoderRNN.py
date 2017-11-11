@@ -123,6 +123,7 @@ class DecoderRNN(nn.Module):
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
                 logp, h = self.getRNNOutput(batch_input, h)
+                p_gen = None
             else:
                 logp, h, last_output, _, p_gen = self.getAttnOutput(batch_input, last_output,
                                               h, encoder_output, inputs_raw, input_lens)
