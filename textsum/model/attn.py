@@ -12,12 +12,12 @@ class Attn(nn.Module):
         self.bidir = bidir
         
         if self.method == 'general':
-            self.encoder_output_size = self.hidden_size * (2 if bidir else 1)
-            self.attn = nn.Linear(self.encoder_output_size, hidden_size)
+            encoder_output_size = self.hidden_size * (2 if bidir else 1)
+            self.attn = nn.Linear(encoder_output_size, hidden_size)
 
         if self.method == 'concat':
-            self.encoder_output_size = self.hidden_size * (3 if bidir else 2)
-            self.attn = nn.Linear(self.encoder_output_size, hidden_size)
+            encoder_output_size = self.hidden_size * (3 if bidir else 2)
+            self.attn = nn.Linear(encoder_output_size, hidden_size)
             self.v = nn.Linear(self.hidden_size, 1)
 
 
