@@ -23,6 +23,4 @@
 #echo $HOSTNAME
 #echo "Running on gpu"
 #echo "Device = $CUDA_VISIBLE_DEVICES"
-#python main.py --build_vocab
-#python main.py --build_emb
-python main.py --mode train --use_cuda  
+python main.py --mode train --use_pointer_net --attn_model dot --use_cuda --vecdata /pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV_toy.pkl &> /pylon5/ir3l68p/haomingc/1001Nights/log/pointer &

@@ -45,27 +45,71 @@ def next_batch(batch_idx, data):
     inputs = [pad_seq(x, max(input_lens)) for x in inputs]
     target_lens = [len(y) for y in targets]
     targets = [pad_seq(y, max(target_lens)) for y in targets]
-    return torch.LongTensor(inputs), torch.LongTensor(targets), input_lens, target_lens
+    
+    if not args.use_pointer_net:
+        inputs = torch.LongTensor(inputs)
+        targets = torch.LongTensor(targets)
+    return inputs, targets, input_lens, target_lens
 
 def mask_loss(logp_list, target_lens, targets):
     """
-    logp_list: list of torch tensors, (seq - 1) x batch x vocab_size
+    logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
-    seq = targets.size(1)
+    seq_len = targets.size(1)
     target_lens = torch.LongTensor(target_lens)
     use_cuda = logp_list[0].is_cuda
     target_lens = target_lens.cuda() if use_cuda else target_lens
     loss = 0
     # offset 1 due to SOS
-    for i in range(seq - 1):
+    for i in range(seq_len - 1):
         idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
         logp = torch.gather(logp_list[i], 1, idx).view(-1)
         loss += logp[target_lens > i + 1].sum()
     return -loss
 
+def build_local_index(inputs, targets):
+    """
+    inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
+    targets: same as above, but for headline.
+    """
+    inps, tgts = [], []
+    loc_word2idx, loc_idx2word = {}, {}
+    loc_idx = args.vocab_size  # size of global index
+    
+    for inp, tgt in zip(inputs, targets):
+        for i, word in enumerate(inp):
+            if isinstance(word, str):
+                if word not in loc_word2idx:   # an out-of-vocabulary word
+                    loc_word2idx[word] = loc_idx
+                    loc_idx2word[loc_idx] = word
+                    loc_idx +=1
+                inp[i] = loc_word2idx[word]
+                
+        for i, word in enumerate(tgt):
+            # an out-of-vocabulary word that only exists in target will transform to UNK
+            if isinstance(word, str):
+                tgt[i] = loc_word2idx[word] if word in loc_word2idx else word2idx[UNK]
+                
+        inps.append(inp)
+        tgts.append(tgt)
+        
+    inputs = torch.LongTensor(inps)
+    targets = torch.LongTensor(tgts)
+    return inputs, targets, loc_word2idx, loc_idx2word
+
 def train(data):
+    
+    def data_transform(inputs, targets):
+        loc_word2idx, loc_idx2word = {}, {}
+        if args.use_pointer_net:
+            inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)
+        if args.use_cuda:
+            targets = targets.cuda()
+            inputs = inputs.cuda()
+        return inputs, targets, loc_word2idx, loc_idx2word
+        
     nbatch = len(data)
     ntest = nbatch // 50
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
@@ -88,12 +132,16 @@ def train(data):
         batch_idx = 0
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
+        epoch_p_gen = 0
         s2s.train(True)
-        for inputs, targets, input_lens, target_lens in train_data:
-            if args.use_cuda:
-                targets = targets.cuda()
-                inputs = inputs.cuda()
-            logp = s2s(inputs, input_lens, targets)
+        s2s.requires_grad = True
+        for inputs, targets, input_lens, target_lens in train_data[:5000]:
+        # for inputs, targets, input_lens, target_lens in train_data:
+            # loc_word2idx, loc_idx2word: local oov indexing for a batch
+            inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
+            oov_size = len(loc_word2idx)
+            
+            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()
@@ -101,22 +149,26 @@ def train(data):
             # torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
             s2s_opt.step()
             epoch_loss += loss.data[0]
+            # epoch_p_gen += mask_generation_prob(p_gen)
             batch_idx += 1
+
             if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
                     time.time() - ts, loss.data[0]))
+                s2s.train(False)
+                s2s.requires_grad = False
                 summarize(s2s, inputs, input_lens, targets, target_lens,
-                        beam_search = False)
+                        loc_idx2word, beam_search = False)
                 sys.stdout.flush()
         train_loss = epoch_loss / sum_len
 
         s2s.train(False)
+        s2s.requires_grad = False
         epoch_loss, sum_len = 0, 0
         for inputs, targets, input_lens, target_lens in test_data:
-            if args.use_cuda:
-                targets = targets.cuda()
-                inputs = inputs.cuda()
-            logp = s2s(inputs, input_lens, targets)
+            inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
+            oov_size = len(loc_word2idx) 
+            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             epoch_loss += loss.data[0]
@@ -125,18 +177,18 @@ def train(data):
         model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
 
-def idxes2sent(idxes):
-    seq = ""
-    for idx in idxes:
+def idxes2sent(idxes, loc_idx2word):
+    seq = []
+    for idx in idxes.numpy():
         if idx2word[idx] == SOS:
             continue
         if idx2word[idx] == EOS:
             break
-        seq += idx2word[idx] + " "
+        seq.append(('%s_<COPY>' % loc_idx2word[idx]) if idx in loc_idx2word else idx2word[idx])
     # some characters may not be printable if not encode by utf-8
-    return seq.encode('utf-8').decode("utf-8")
+    return " ".join(seq).encode('utf-8').decode("utf-8")
 
-def show_attn(input_text, output_text, gold_text, attn):
+def visualization(input_text, output_text, gold_text, attn):
     """
     attn: output_s x input_s
     """
@@ -161,10 +213,12 @@ def show_attn(input_text, output_text, gold_text, attn):
     plt.savefig("%s/figure/attn/%s.png" % (args.save_path, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
 
-def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
-    logp, list_symbols, attns = s2s.summarize(inputs, input_lens, beam_search)
+def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, beam_search=True):
+    logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, beam_search)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
-    if beam_search is False and args.show_attn and args.attn_model != 'none':
+    decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
+    visualize = beam_search is False and args.visualize and args.attn_model != 'none'
+    if visualize:   # only plot if it's not beam search
         attns = torch.stack(attns).transpose(0, 1) # b x target_s x input_s
 
     for i in range(min(len(targets), 1)):
@@ -174,22 +228,20 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, beam_search=True):
         1 instance.
         """
         symbols = list_symbols[i]
-        decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
-        text = idxes2sent(inputs[i].cpu().numpy())
-        prediction = idxes2sent(symbols.cpu().data.numpy())
-        truth = idxes2sent(targets[i].cpu().numpy())
+        srcText = idxes2sent(inputs[i].cpu(), loc_idx2word)
+        prediction = idxes2sent(symbols.cpu().data, loc_idx2word)
+        truth = idxes2sent(targets[i].cpu(), loc_idx2word)
         hyps[decode_approach].append(prediction)
         refs[decode_approach].append(truth)
-        if beam_search is False and args.show_attn and args.attn_model != 'none':
-            # only plot if it's not beam search
-            show_attn(text, prediction, truth, attns[i, :, :])
+        if visualize:
+            visualization(srcText, prediction, truth, attns[i, :, :])
 
-        print("text:", text)
-        print(decode_approach, ":", prediction)
-        print("gt:", truth)
-        print(80 * '-')
+        print("<Source Text>: %s" % srcText)
+        print("<Ground Truth>: %s" % truth)
+        print("<%s>: %s\n%s" % (decode_approach, prediction, 80 * '-'))
 
-def test(model_path, testset, is_text=True):
+def test(model_path, testset, test_size=10000, is_text=True):
+
     def vectorize(raw_data):
         data_vec = []
         for data in raw_data:
@@ -200,9 +252,9 @@ def test(model_path, testset, is_text=True):
         return data_vec
 
     s2s = torch.load(model_path, map_location=lambda storage, loc: storage)
-    # switch to CPU for testing
-    s2s.use_cuda = False
+    s2s.use_cuda = False    # switch to CPU for testing   
     s2s.train(False)
+    s2s.requires_grad = False
 
     # transfrom into indice representation for testing
     if is_text:
@@ -214,7 +266,7 @@ def test(model_path, testset, is_text=True):
         inputs = torch.LongTensor([body])
         targets = torch.LongTensor([headline])
         summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
-        summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
+        # summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
 
     rouge = Rouge()
     for decode_approach in ["Greedy Search", "Beam Search"]:
@@ -238,7 +290,9 @@ def vec2text_from_full():
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--vecdata', type=str, default=
-            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+            # "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
+        "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV.pkl")
+    
     argparser.add_argument('--save_path', type=str, default=
             "/pylon5/ir3l68p/haomingc/1001Nights/")
     argparser.add_argument('--test_fpath', type=str, default=
@@ -246,33 +300,34 @@ if __name__ == "__main__":
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
     argparser.add_argument('--test_size', type=int, default=10000)
     argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
-    argparser.add_argument('--model_fpat', type=str, default="saved_model/s2s-s%s-e%02d.model")
+    argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=256)
-    argparser.add_argument('--emb_size', type=int, default=128)
-    argparser.add_argument('--hidden_size', type=int, default=128)
+    argparser.add_argument('--batch_size', type=int, default=128)
+    argparser.add_argument('--emb_size', type=int, default=64)
+    argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
     argparser.add_argument('--nepochs', type=int, default=30)
     argparser.add_argument('--max_title_len', type=int, default=20)
     argparser.add_argument('--max_text_len', type=int, default=32)
-    argparser.add_argument('--learning_rate', type=float, default=0.003)
+    argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
     argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
-    argparser.add_argument('--show_attn', action='store_true', default = False)
+    argparser.add_argument('--visualize', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
-    argparser.add_argument('--l2', type=float, default=0.03)
-    argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='gru')
+    argparser.add_argument('--l2', type=float, default=0.001)
+    argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
+    argparser.add_argument('--use_pointer_net', action='store_true', default = False)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():
         print('- {} = {}'.format(k, v))
+
     # There are two types of data, vecdata already transforms the word to idx,
     # replace word OOV with idx of UNK; the other is raw text.
     vecdata = pickle.load(open(args.vecdata, "rb"))
-    word2idx = vecdata["word2idx"]
-    idx2word = vecdata["idx2word"]
+    word2idx, idx2word = vecdata["word2idx"], vecdata["idx2word"]
     args.vocab_size = len(word2idx)
 
     # for evaluation
@@ -283,7 +338,6 @@ if __name__ == "__main__":
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
         model_path = args.save_path + args.model_name
-        testset = None
         if args.data_src == 'xml':
             testset = vec2text_from_full()
         if args.data_src == 'std':
