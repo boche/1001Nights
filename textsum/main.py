@@ -51,23 +51,23 @@ def next_batch(batch_idx, data):
         targets = torch.LongTensor(targets)
     return inputs, targets, input_lens, target_lens
 
-def mask_loss(logp_list, target_lens, targets, seq_decay = 1.0):
+def mask_loss(logp_list, target_lens, targets):
     """
     logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
     seq_len = targets.size(1)
+
     target_lens = torch.LongTensor(target_lens)
     use_cuda = logp_list[0].is_cuda
     target_lens = target_lens.cuda() if use_cuda else target_lens
-    loss, weight = 0, 1.0
+    loss = 0
     # offset 1 due to SOS
     for i in range(seq_len - 1):
         idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
         logp = torch.gather(logp_list[i], 1, idx).view(-1)
-        loss += logp[target_lens > i + 1].sum() * weight
-        weight *= seq_decay
+        loss += logp[target_lens > i + 1].sum()
     return -loss
 
 def build_local_index(inputs, targets):
@@ -78,7 +78,7 @@ def build_local_index(inputs, targets):
     inps, tgts = [], []
     loc_word2idx, loc_idx2word = {}, {}
     loc_idx = args.vocab_size  # size of global index
-
+    
     for inp, tgt in zip(inputs, targets):
         for i, word in enumerate(inp):
             if isinstance(word, str):
@@ -143,8 +143,7 @@ def train(data):
             oov_size = len(loc_word2idx)
             
             logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
-            # only apply seq_decay in training
-            loss = mask_loss(logp, target_lens, targets, args.seq_decay)
+            loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()
             loss.backward()
@@ -305,8 +304,7 @@ if __name__ == "__main__":
     argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--use_pointer_net', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=256)
+    argparser.add_argument('--batch_size', type=int, default=128)
     argparser.add_argument('--emb_size', type=int, default=64)
     argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
@@ -316,12 +314,14 @@ if __name__ == "__main__":
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
-    argparser.add_argument('--seq_decay', type=float, default=1.0)
-    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
+
+    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot', 'concat'], default='none')
     argparser.add_argument('--visualize', action='store_true', default = False)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.001)
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
+    argparser.add_argument('--use_pointer_net', action='store_true', default = False)
+    argparser.add_argument('--bidir', action='store_true', default = False)
 
     args = argparser.parse_args()
     for k, v in args.__dict__.items():

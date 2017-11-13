@@ -10,7 +10,7 @@ from .pointerNet import *
 
 class DecoderRNN(nn.Module):
     def __init__(self, vocab_size, emb, hidden_size, nlayers, teach_ratio,
-            dropout, rnn_model, use_pointer_net, attn_model='general'):
+            dropout, rnn_model, use_pointer_net, bidir, attn_model='general'):
         # attn_model supports: 'none', 'general', 'dot'
         super(DecoderRNN, self).__init__()
         self.nlayers = nlayers
@@ -20,6 +20,7 @@ class DecoderRNN(nn.Module):
         self.teach_ratio = teach_ratio
         self.attn_model = attn_model
         self.rnn_model = rnn_model
+        self.bidir = bidir
         self.use_pointer_net = use_pointer_net
 
         self.emb = emb
@@ -33,9 +34,10 @@ class DecoderRNN(nn.Module):
                     dropout = dropout, num_layers = nlayers, batch_first = True)
 
         if self.attn_model != 'none':
-            self.concat = nn.Linear(hidden_size * 2, hidden_size)
+            concat_size = hidden_size * (3 if bidir else 2)
+            self.concat = nn.Linear(concat_size, hidden_size)
             self.attn_model = attn_model
-            self.attn = Attn(attn_model, hidden_size)
+            self.attn = Attn(attn_model, hidden_size, bidir)
             
             if self.use_pointer_net:  # activate copy mechanism from pointer net
                 self.ptr = PointerNet(emb_size, hidden_size)
@@ -121,6 +123,7 @@ class DecoderRNN(nn.Module):
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
                 logp, h = self.getRNNOutput(batch_input, h)
+                p_gen = None
             else:
                 logp, h, last_output, _, p_gen = self.getAttnOutput(batch_input, last_output,
                                               h, encoder_output, inputs_raw, input_lens)
