@@ -45,7 +45,7 @@ def next_batch(batch_idx, data):
     inputs = [pad_seq(x, max(input_lens)) for x in inputs]
     target_lens = [len(y) for y in targets]
     targets = [pad_seq(y, max(target_lens)) for y in targets]
-    
+   
     if not args.use_pointer_net:
         inputs = torch.LongTensor(inputs)
         targets = torch.LongTensor(targets)
@@ -77,21 +77,62 @@ def build_local_index(inputs, targets):
     inps, tgts = [], []
     loc_word2idx, loc_idx2word = {}, {}
     loc_idx = args.vocab_size  # size of global index
-
+   
     for inp, tgt in zip(inputs, targets):
+        
+        temp_inp, temp_tgt = [], []        
+
         for i, word in enumerate(inp):
             if isinstance(word, str):
                 if word not in loc_word2idx:   # an out-of-vocabulary word
                     loc_word2idx[word] = loc_idx
                     loc_idx2word[loc_idx] = word
                     loc_idx +=1
-                inp[i] = loc_word2idx[word]
+                temp_inp.append(loc_word2idx[word])
+            else:
+                temp_inp.append(word)
  
         for i, word in enumerate(tgt):
             # an out-of-vocabulary word that only exists in target will transform to UNK
             if isinstance(word, str):
-                tgt[i] = loc_word2idx[word] if word in loc_word2idx else word2idx[UNK]
+                temp_tgt.append(loc_word2idx[word] if word in loc_word2idx else word2idx[UNK])
+            else:
+                temp_tgt.append(word)
+        
+        inps.append(temp_inp)
+        tgts.append(temp_tgt)
 
+    inputs = torch.LongTensor(inps)
+    targets = torch.LongTensor(tgts)
+    return inputs, targets, loc_word2idx, loc_idx2word
+
+
+def faulty_build_local_index(inputs, targets):
+    """
+    inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
+    targets: same as above, but for headline.
+    """
+    inps, tgts = [], []
+    loc_word2idx, loc_idx2word = {}, {}
+    loc_idx = args.vocab_size  # size of global index
+
+    for inp, tgt in zip(inputs, targets):
+
+        print(inp, len(loc_word2idx))
+
+        for i, word in enumerate(inp):
+            if isinstance(word, str):
+                if word not in loc_word2idx:   # an out-of-vocabulary word
+                    loc_word2idx[word] = loc_idx
+                    loc_idx2word[loc_idx] = word
+                    loc_idx +=1
+                inp[i] = 99999
+
+        for i, word in enumerate(tgt):
+            # an out-of-vocabulary word that only exists in target will transform to UNK
+            if isinstance(word, str):
+                tgt[i] = 99999 if word in loc_word2idx else word2idx[UNK]
+    
         inps.append(inp)
         tgts.append(tgt)
 
@@ -99,17 +140,19 @@ def build_local_index(inputs, targets):
     targets = torch.LongTensor(tgts)
     return inputs, targets, loc_word2idx, loc_idx2word
 
+
 def train(data):
     
     def data_transform(inputs, targets):
         loc_word2idx, loc_idx2word = {}, {}
         if args.use_pointer_net:
             inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)
+            # inputs, targets, loc_word2idx, loc_idx2word = faulty_build_local_index(inputs, targets)
         if args.use_cuda:
             targets = targets.cuda()
             inputs = inputs.cuda()
         return inputs, targets, loc_word2idx, loc_idx2word
-        
+    
     nbatch = len(data)
     ntest = nbatch // 50
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
@@ -135,18 +178,19 @@ def train(data):
         epoch_p_gen = 0
         s2s.train(True)
         s2s.requires_grad = True
-        for inputs, targets, input_lens, target_lens in train_data[:50]:
+        
+        for inputs, targets, input_lens, target_lens in train_data[:5000]:
         # for inputs, targets, input_lens, target_lens in train_data:
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
-            
+
             logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()
             loss.backward()
-            # torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
+            torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
             s2s_opt.step()
             epoch_loss += loss.data[0]
             # epoch_p_gen += mask_generation_prob(p_gen)
@@ -158,7 +202,7 @@ def train(data):
                 s2s.train(False)
                 s2s.requires_grad = False
                 summarize(s2s, inputs, input_lens, targets, target_lens,
-                        loc_idx2word, beam_search = False)
+                        loc_idx2word, oov_size, beam_search = False)
                 sys.stdout.flush()
         train_loss = epoch_loss / sum_len
 
@@ -180,9 +224,9 @@ def train(data):
 def idxes2sent(idxes, loc_idx2word):
     seq = []
     for idx in idxes.numpy():
-        if idx2word[idx] == SOS:
+        if idx == word2idx[SOS]:
             continue
-        if idx2word[idx] == EOS:
+        if idx == word2idx[EOS]:
             break
         seq.append(('%s_<COPY>' % loc_idx2word[idx]) if idx in loc_idx2word else idx2word[idx])
     # some characters may not be printable if not encode by utf-8
@@ -213,8 +257,8 @@ def visualization(input_text, output_text, gold_text, attn):
     plt.savefig("%s/figure/attn/%s.png" % (args.save_path, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
 
-def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, beam_search=True):
-    logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, beam_search)
+def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_size, beam_search=True):
+    logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, oov_size, beam_search)
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
     decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
     visualize = beam_search is False and args.visualize and args.attn_model != 'none'
@@ -265,8 +309,8 @@ def test(model_path, testset, test_size=10000, is_text=True):
     for _, headline, body in testset[:args.test_size]:
         inputs = torch.LongTensor([body])
         targets = torch.LongTensor([headline])
-        summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=False)
-        # summarize(s2s, inputs, [len(body)], targets, [len(headline)], beam_search=True)
+        summarize(s2s, inputs, [len(body)], targets, [len(headline)], oov_size, beam_search=False)
+        # summarize(s2s, inputs, [len(body)], targets, [len(headline)], oov_size, beam_search=True)
 
     rouge = Rouge()
     for decode_approach in ["Greedy Search", "Beam Search"]:
@@ -303,7 +347,7 @@ if __name__ == "__main__":
     argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=256)
+    argparser.add_argument('--batch_size', type=int, default=128)
     argparser.add_argument('--emb_size', type=int, default=64)
     argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
@@ -315,7 +359,7 @@ if __name__ == "__main__":
     argparser.add_argument('--dropout', type=float, default=0.0)
     argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot'], default='none')
     argparser.add_argument('--visualize', action='store_true', default = False)
-    # argparser.add_argument('--max_norm', type=float, default=100.0)
+    argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.001)
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
     argparser.add_argument('--use_pointer_net', action='store_true', default = False)

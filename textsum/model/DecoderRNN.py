@@ -41,9 +41,10 @@ class DecoderRNN(nn.Module):
             if self.use_pointer_net:  # activate copy mechanism from pointer net
                 self.ptr = PointerNet(emb_size, hidden_size)
 
-    def getAttnOutput(self, batch_input, last_output, h, encoder_output, inputs_raw, input_lens):
+    def getAttnOutput(self, batch_input, last_output, h, encoder_output, inputs_raw, input_lens, oov_size):
         input_emb = self.emb(batch_input)
         concat_input = torch.cat([input_emb, last_output], 1).unsqueeze(1)
+
         rnn_output, h = self.rnn(concat_input, h)
         attn_weights = self.attn(rnn_output, encoder_output, input_lens) # b x 1 x s
         context = attn_weights.bmm(encoder_output)
@@ -55,13 +56,13 @@ class DecoderRNN(nn.Module):
         
         if self.use_pointer_net:
             p_vocab = F.softmax(self.out(concat_output))
-            logp, p_gen = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw)
+            logp, p_gen = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw, oov_size)
         else:
             logp = F.log_softmax(self.out(concat_output))
         return logp, h, concat_output, attn_weights, p_gen
     
 
-    def getPointerOutput(self, p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw):
+    def getPointerOutput(self, p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw, oov_size):
         """
         p_vocab: B x V
         inputs_raw: indexed inputs without replacing oov to UNK
@@ -82,6 +83,9 @@ class DecoderRNN(nn.Module):
         # compute probability to copy from source: (1 - p(gen)) * P(w)
         p_copy_src = (1 - p_gen) * attn_weights.squeeze(1)
         p_extVocab.scatter_add_(1, Variable(inputs_raw), p_copy_src)
+ 
+        if self.oov_size != oov_size:
+            print("self.oov_size != oov_size !!!!!!!!!!!!!!1") 
         
         # # experiment for scatter_add()
         # x = Variable(torch.Tensor([[9,10,11,12], [2,3,0,0]]))
@@ -93,6 +97,11 @@ class DecoderRNN(nn.Module):
         # p_sum = torch.sum(p_extVocab, 1)
         # print(p_sum.data.numpy())
 
+        # print(attn_weights[13, :].squeeze(1).cpu().data.numpy())
+        # print(inputs_raw[13, :].cpu().numpy())
+        # print(p_extVocab.size())
+        # print(p_extVocab[13, self.vocab_size:].cpu().data.numpy())
+        # print(p_gen.cpu().data.numpy())
         return torch.log(p_extVocab), p_gen
     
     def getRNNOutput(self, batch_input, h):
@@ -125,7 +134,7 @@ class DecoderRNN(nn.Module):
                 logp, h = self.getRNNOutput(batch_input, h)
             else:
                 logp, h, last_output, _, p_gen = self.getAttnOutput(batch_input, last_output,
-                                              h, encoder_output, inputs_raw, input_lens)
+                                              h, encoder_output, inputs_raw, input_lens, oov_size)
             
             batch_output.append(logp)
             batch_p_gens.append(p_gen)
@@ -140,7 +149,7 @@ class DecoderRNN(nn.Module):
                 
         return batch_output, batch_p_gens
 
-    def summarize(self, encoder_hidden, max_seq_len, encoder_output, inputs_raw, input_lens):
+    def summarize(self, encoder_hidden, max_seq_len, encoder_output, inputs_raw, input_lens, oov_size):
         batch_size = encoder_hidden.size(1) if self.rnn_model == 'gru' else encoder_hidden[0].size(1)
         h = encoder_hidden
         # here it's assuming SOS has index 0
@@ -157,14 +166,23 @@ class DecoderRNN(nn.Module):
                 logp, h = self.getRNNOutput(batch_input, h)
             else:
                 logp, h, last_output, attn_weights, p_gen = self.getAttnOutput(
-                        batch_input, last_output, h, encoder_output, inputs_raw, input_lens)
+                        batch_input, last_output, h, encoder_output, inputs_raw, input_lens, oov_size)
                 batch_attn.append(attn_weights.squeeze(1))
             batch_output.append(logp)
             batch_p_gen.append(p_gen)
-
-            _, batch_input = torch.max(logp, 1, keepdim=False)
-            batch_symbol.append(batch_input)
-            batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
+            
+            # print('logp: ', logp.size())
+            batch_max_logp, batch_input = torch.max(logp, 1, keepdim=False)
+            
+            #if t == max_seq_len // 3:
+                # print(type(batch_max_logp), batch_max_logp.size())
+                # print(type(batch_input), batch_input.data.cpu().numpy())
+                # print(torch.cat([batch_max_logp.unsqueeze(1), batch_input.float().unsqueeze(1)], 1).data.cpu().numpy())
+                # print(logp[13, self.vocab_size:].data.cpu().numpy())           
+            
+            batch_symbol.append(batch_input.clone())
+            if self.use_pointer_net:
+                batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
 
         return batch_output, batch_symbol, batch_attn, batch_p_gen
 
