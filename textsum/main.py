@@ -144,7 +144,7 @@ def train(data):
         s2s.train(True)
         s2s.requires_grad = True
         
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:50]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
@@ -312,7 +312,7 @@ if __name__ == "__main__":
     argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=128)
+    argparser.add_argument('--batch_size', type=int, default=256)
     argparser.add_argument('--emb_size', type=int, default=64)
     argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
