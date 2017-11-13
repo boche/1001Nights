@@ -14,7 +14,6 @@ class DecoderRNN(nn.Module):
         # attn_model supports: 'none', 'general', 'dot'
         super(DecoderRNN, self).__init__()
         self.nlayers = nlayers
-        self.output_size = vocab_size
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.teach_ratio = teach_ratio
@@ -26,7 +25,7 @@ class DecoderRNN(nn.Module):
         self.emb = emb
         # self.dropout = nn.Dropout(dropout)
         emb_size = self.emb.weight.size(1)
-        self.out = nn.Linear(self.hidden_size, self.output_size)
+        self.out = nn.Linear(self.hidden_size, self.vocab_size)
 
         rnn_class = nn.GRU if rnn_model == 'gru' else nn.LSTM
         rnn_input_size = emb_size if attn_model == 'none' else emb_size + hidden_size
@@ -70,37 +69,26 @@ class DecoderRNN(nn.Module):
         """
         p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1, broadcastable
         batch_size = p_gen.size(0)
-        extVocab_size = self.output_size + self.oov_size
+        extVocab_size = self.vocab_size + oov_size
         self.use_cuda = p_gen.data.is_cuda
         
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
         p_gen_vocab = p_gen * p_vocab
-        if self.oov_size != 0:
-            p_gen_oov = Variable(torch.zeros(batch_size, self.oov_size))
+        if oov_size != 0:
+            p_gen_oov = Variable(torch.zeros(batch_size, oov_size))
             p_gen_oov = p_gen_oov.cuda() if self.use_cuda else p_gen_oov
-        p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) if self.oov_size else p_gen_vocab   # B x ExtV
+        p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) if oov_size else p_gen_vocab   # B x ExtV
         
         # compute probability to copy from source: (1 - p(gen)) * P(w)
         p_copy_src = (1 - p_gen) * attn_weights.squeeze(1)
         p_extVocab.scatter_add_(1, Variable(inputs_raw), p_copy_src)
- 
-        if self.oov_size != oov_size:
-            print("self.oov_size != oov_size !!!!!!!!!!!!!!1") 
-        
-        # # experiment for scatter_add()
-        # x = Variable(torch.Tensor([[9,10,11,12], [2,3,0,0]]))
-        # idx = Variable(torch.LongTensor([[4,3,4,7], [1,1,2,2]]))
-        # out = Variable(torch.randn(2,8))
-        # out.scatter_add_(1, idx, x)
         
         # # assert sum of probs of each instance is 1
-        # p_sum = torch.sum(p_extVocab, 1)
-        # print(p_sum.data.numpy())
+        # print(torch.sum(p_extVocab, 1).data.numpy())
 
-        # print(attn_weights[13, :].squeeze(1).cpu().data.numpy())
+        # print('attn_weighs: ', attn_weights[1, :].squeeze(1).cpu().data.numpy())
         # print(inputs_raw[13, :].cpu().numpy())
-        # print(p_extVocab.size())
-        # print(p_extVocab[13, self.vocab_size:].cpu().data.numpy())
+        # print('p_extVocab: ', p_extVocab[1, self.vocab_size - 2:].cpu().data.numpy())
         # print(p_gen.cpu().data.numpy())
         return torch.log(p_extVocab), p_gen
     
@@ -119,7 +107,6 @@ class DecoderRNN(nn.Module):
         return last_output
     
     def forward(self, target, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size):
-        self.oov_size = oov_size
         batch_size, max_seq_len = target.size()
         h = encoder_hidden
         batch_input = Variable(target[:, 0]) #SOS, b
@@ -154,8 +141,7 @@ class DecoderRNN(nn.Module):
         h = encoder_hidden
         # here it's assuming SOS has index 0
         batch_input = Variable(torch.Tensor.long(torch.zeros(batch_size)))
-        use_cuda = next(self.parameters()).data.is_cuda
-        if use_cuda:
+        if next(self.parameters()).data.is_cuda:
             batch_input = batch_input.cuda()
         batch_output, batch_attn, batch_p_gen = [], [], []
         batch_symbol, p_gen = [batch_input], None
@@ -168,19 +154,12 @@ class DecoderRNN(nn.Module):
                 logp, h, last_output, attn_weights, p_gen = self.getAttnOutput(
                         batch_input, last_output, h, encoder_output, inputs_raw, input_lens, oov_size)
                 batch_attn.append(attn_weights.squeeze(1))
+
             batch_output.append(logp)
             batch_p_gen.append(p_gen)
-            
-            # print('logp: ', logp.size())
-            batch_max_logp, batch_input = torch.max(logp, 1, keepdim=False)
-            
-            #if t == max_seq_len // 3:
-                # print(type(batch_max_logp), batch_max_logp.size())
-                # print(type(batch_input), batch_input.data.cpu().numpy())
-                # print(torch.cat([batch_max_logp.unsqueeze(1), batch_input.float().unsqueeze(1)], 1).data.cpu().numpy())
-                # print(logp[13, self.vocab_size:].data.cpu().numpy())           
-            
+            _, batch_input = torch.max(logp, 1, keepdim=False)
             batch_symbol.append(batch_input.clone())
+
             if self.use_pointer_net:
                 batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
 
