@@ -26,17 +26,19 @@ class Seq2Seq(nn.Module):
                 self.use_pointer_net, self.attn_model)
 
     def forward(self, inputs, input_lens, targets, oov_size):
+        inputs_raw = inputs.clone()
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
-        logp = self.decoder(targets, encoder_hidden, encoder_output, inputs, input_lens, oov_size)
-        return logp
+        logp, p_gen = self.decoder(targets, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size)
+        return logp, p_gen
 
-    def summarize(self, inputs, input_lens, beam_search=True):
+    def summarize(self, inputs, input_lens, oov_size, beam_search=True):
+        inputs_raw = inputs.clone()
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         logp, symbols = None, None
         if beam_search:
             logp, symbols, attns = self.decoder.summarize_bs(encoder_hidden,
                     self.max_title_len, encoder_output, input_lens)
         else:
-            logp, symbols, attns = self.decoder.summarize(encoder_hidden,
-                    self.max_title_len, encoder_output, inputs, input_lens)
-        return logp, symbols, attns
+            logp, symbols, attns, p_gens = self.decoder.summarize(encoder_hidden,
+                    self.max_title_len, encoder_output, inputs_raw, input_lens, oov_size)
+        return logp, symbols, attns, p_gens
