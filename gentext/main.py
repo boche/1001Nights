@@ -29,6 +29,7 @@ def train(data, identifier):
     num_val = len(data) // 10
     train_data, val_data = data[:-num_val], data[-num_val:]
     s2s = Seq2Seq.Seq2Seq(args)
+    print(s2s)
     s2s = s2s.cuda() if args.use_cuda else s2s
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr = args.learning_rate,
             weight_decay = args.l2)
@@ -39,7 +40,7 @@ def train(data, identifier):
 
         s2s.train(True)
         epoch_loss, sum_len = 0, 0
-        for batch_idx, batch in enumerate(train_data):
+        for batch_idx, batch in enumerate(train_data[:1000]):
             if args.use_cuda:
                 batch = tuple(x.cuda() if isinstance(x, torch.LongTensor) else x
                         for x in batch)
@@ -53,7 +54,8 @@ def train(data, identifier):
             # -len(targets_len) due to SOS
             sum_len += sum(targets_len) - len(targets_len)
             if batch_idx % 20 == 0:
-                print("batch %d, time %.1f sec" % (batch_idx, time.time() - ts))
+                print("batch %d, time %.1f sec, loss %.1f" % (batch_idx,
+                    time.time() - ts, loss.data[0]))
                 sample(s2s, batch)
         train_loss = epoch_loss / sum_len
 
@@ -93,7 +95,7 @@ if __name__ == "__main__":
     argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--model_fpat', type=str, default="model/%s-%02d.model")
     argparser.add_argument('--test_model', type=str, default="model/39TU-01.model")
-    argparser.add_argument('--word_layers', type=int, default=1)
+    argparser.add_argument('--word_layers', type=int, default=2)
     argparser.add_argument('--sent_layers', type=int, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
     argparser.add_argument('--nepochs', type=int, default=30)
@@ -103,6 +105,7 @@ if __name__ == "__main__":
     argparser.add_argument('--use_cuda', action='store_true', default = False)
     argparser.add_argument('--test', action='store_true', default = False)
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='gru')
+    argparser.add_argument('--decoder_model', type=str, choices=['sent', 'word'], default='sent')
 
     args = argparser.parse_args()
     docs, idx2word, idx2pos = load_data(args.data_path)

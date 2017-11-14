@@ -4,9 +4,9 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from util import mask_loss
 
-class DecoderRNN(nn.Module):
+class SentDecoderRNN(nn.Module):
     def __init__(self, emb, hidden_size, nlayers, dropout, rnn_model):
-        super(DecoderRNN, self).__init__()
+        super(SentDecoderRNN, self).__init__()
         vocab_size, emb_size = emb.weight.size()
 
         self.emb = emb

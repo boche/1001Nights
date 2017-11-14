@@ -41,4 +41,4 @@ class EncoderRNN(nn.Module):
         sent_output, sent_state = self.sent_rnn(sent_emb)
         # sent_output: b x ns x h
         # sent_state: nsl x b x h, tuple if lstm
-        return word_output, sent_output, sent_state
+        return word_output, word_state, sent_output, sent_state
