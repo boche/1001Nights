@@ -28,13 +28,13 @@ class EncoderRNN(nn.Module):
             Variable(inputs, volatile = is_volatile))) # -> b x s x e
         word_pack = nn.utils.rnn.pack_padded_sequence(word_emb, inputs_len,
                 batch_first=True)
-        word_pack, word_state = self.word_rnn(word_pack)
-        word_output, _ = nn.utils.rnn.pad_packed_sequence(
-                word_pack, batch_first=True)
+        word_res_pack, word_state = self.word_rnn(word_pack)
+        word_output, _ = nn.utils.rnn.pad_packed_sequence(word_res_pack,
+                batch_first=True)
         # word_output: b x s x h
         # word_state: nwl x b x h, tuple if lstm
 
-        # gather the end state for each sentence
+        # gather the end output for each sentence
         gather_indices = Variable(inputs_eos_indices.unsqueeze(2).repeat(
                 1, 1, self.hidden_size)) # b x ns x h
         sent_emb = word_output.gather(1, gather_indices) # -> b x ns x h

@@ -3,82 +3,23 @@ import argparse
 import random
 import string
 import time
-import pickle
-import torch
-from tokens import *
 from model import Seq2Seq
-
-def pad_seq(seq, max_length):
-    seq += [0] * (max_length - len(seq))
-    return seq
-
-def load_data():
-    word2idx, idx2word, pos2idx, idx2pos = pickle.load(
-        open(args.data_path + "dict.pkl", "rb"))
-    docs = pickle.load(open(args.data_path + "text_keyword.pkl", "rb"))
-    return docs, idx2word, idx2pos
-
-def group_data(docs):
-    docs = sorted(docs, key = lambda x: len(x[1][1]), reverse = True)
-    nbatches = (len(docs) + args.batch_size - 1) // args.batch_size
-    return [next_batch(i, docs) for i in range(nbatches)]
-
-def extend_roots(roots, eos_indices):
-    ext_roots = []
-    start_idx = -1
-    for i, root in enumerate(roots):
-        end_idx = eos_indices[i]
-        ext_roots += [root] * (end_idx - start_idx)
-        start_idx = end_idx
-    return ext_roots
-
-def next_batch(idx, docs):
-    """
-    docs: list of (docid, input_text, target_text)
-    input_text, target_text: eos_indices, text, pos, roots
-    """
-    start = idx * args.batch_size
-    end = min(len(docs), start + args.batch_size)
-
-    inputs, targets = [], []
-    inputs_eos_indices, targets_eos_indices = [], []
-    targets_roots = []
-    for i in range(start, end):
-        docid, input_text, target_text = docs[i]
-        input_eos_indices, input_text, _, _ = input_text
-        target_eos_indices, target_text, _, target_roots = target_text
-        inputs.append(input_text)
-        targets.append(target_text)
-        inputs_eos_indices.append(input_eos_indices)
-        targets_eos_indices.append(target_eos_indices)
-        targets_roots.append(extend_roots(target_roots, target_eos_indices))
-
-    inputs_len = [len(x) for x in inputs]
-    inputs = [pad_seq(x, max(inputs_len)) for x in inputs]
-    targets_len = [len(y) for y in targets]
-    targets = [pad_seq(y, max(targets_len)) for y in targets]
-    targets_roots = [pad_seq(y, max(targets_len)) for y in targets_roots]
-    return (torch.LongTensor(inputs), torch.LongTensor(targets),
-            torch.LongTensor(inputs_eos_indices),
-            torch.LongTensor(targets_eos_indices),
-            torch.LongTensor(targets_roots), inputs_len, targets_len)
-
-def idxes2sent(idxes):
-    seq = [idx2word[idx].replace("<EOS>", "<EOS>\n") for idx in idxes]
-    # some characters may not be printable if not encode by utf-8
-    return " ".join(seq).encode('utf-8').decode("utf-8")
+from util import *
 
 def sample(s2s, batch):
+    """
+    only sample the first instance in the batch
+    """
     (inputs, targets, inputs_eos_indices, targets_eos_indices,
             targets_kws, inputs_len, targets_len) = batch
-    sample_res = s2s.sample(batch, True)
-    context = idxes2sent(inputs[0][:inputs_len[0]])
-    truth = idxes2sent(targets[0][:targets_len[0]])
-    kws = targets_kws.gather(1, targets_eos_indices)[0]
-    keywords = " ".join([idx2word[x] for x in kws])
+    sample_res = idxes2sent(s2s.sample(batch, True), idx2word)
+    context = idxes2sent(inputs[0][:inputs_len[0]], idx2word)
+    truth = idxes2sent(targets[0][:targets_len[0]], idx2word)
+    keywords = idxes2sent(targets_kws.gather(1, targets_eos_indices)[0],
+            idx2word)
     print("[Context] %s" % context)
     print("[Keywords] %s\n" % keywords)
-    print("[Sample] %s" % idxes2sent(sample_res))
+    print("[Sample] %s" % sample_res)
     print("[Truth] %s" % truth)
     print("-" * 80)
     sys.stdout.flush()
@@ -97,19 +38,18 @@ def train(data, identifier):
         random.shuffle(train_data)
 
         s2s.train(True)
-        epoch_loss, sum_len, batch_idx = 0, 0, 0
-        for batch in train_data:
-            batch_idx += 1
+        epoch_loss, sum_len = 0, 0
+        for batch_idx, batch in enumerate(train_data):
             if args.use_cuda:
                 batch = tuple(x.cuda() if isinstance(x, torch.LongTensor) else x
                         for x in batch)
-            targets_len = batch[-1]
             loss = s2s(batch, False)
             s2s_opt.zero_grad()
             loss.backward()
             s2s_opt.step()
 
             epoch_loss += loss.data[0]
+            targets_len = batch[-1]
             # -len(targets_len) due to SOS
             sum_len += sum(targets_len) - len(targets_len)
             if batch_idx % 20 == 0:
@@ -123,9 +63,9 @@ def train(data, identifier):
             if args.use_cuda:
                 batch = tuple(x.cuda() if isinstance(x, torch.LongTensor) else x
                         for x in batch)
-            targets_len = batch[-1]
             loss = s2s(batch, True)
             epoch_loss += loss.data[0]
+            targets_len = batch[-1]
             # -len(targets_len) due to SOS
             sum_len += sum(targets_len) - len(targets_len)
         print("Epoch %d, train loss %.2f, test loss %.2f, #batch %d, time %.2f sec"
@@ -165,8 +105,7 @@ if __name__ == "__main__":
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='gru')
 
     args = argparser.parse_args()
-
-    docs, idx2word, idx2pos = load_data()
+    docs, idx2word, idx2pos = load_data(args.data_path)
     args.vocab_size = len(idx2word)
     # identifier should be generated before setting random seed
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits)
@@ -178,9 +117,9 @@ if __name__ == "__main__":
     train_val_docs, test_docs = docs[:-num_test], docs[-num_test:]
     if args.test:
         args.batch_size = 1
-        test(group_data(test_docs))
+        test(group_data(test_docs, args.batch_size))
     else:
         print("Identifier", identifier)
         for k, v in args.__dict__.items():
             print('- {} = {}'.format(k, v))
-        train(group_data(train_val_docs), identifier)
+        train(group_data(train_val_docs, args.batch_size), identifier)

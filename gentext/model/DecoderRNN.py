@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
+from util import mask_loss
 
 class DecoderRNN(nn.Module):
     def __init__(self, emb, hidden_size, nlayers, dropout, rnn_model):
@@ -17,7 +18,7 @@ class DecoderRNN(nn.Module):
                 dropout = dropout, num_layers = nlayers, batch_first = True)
         self.out_fc = nn.Linear(hidden_size, vocab_size)
         self.SOS_IDX = 0 # assume sos idx is 0
-        self.EOS_IDX = 1 #assuming eos idx is 1
+        self.EOS_IDX = 1 # assume eos idx is 1
 
     def forward(self, targets, targets_kws, sent_state, targets_len):
         """
@@ -26,7 +27,7 @@ class DecoderRNN(nn.Module):
         sent_state: nl x b x h, tuple if lstm
         """
         seq_len = targets.size(1)
-        word_state = sent_state
+        word_state = sent_state.clone()
         nl, _, hidden_size = sent_state.size()
         logp_list = []
 
@@ -47,7 +48,7 @@ class DecoderRNN(nn.Module):
             sent_output, tmp_sent_state = self.sent_rnn(word_output, sent_state)
             sent_state = sent_state * (1 - mask_eos) + tmp_sent_state * mask_eos
             word_state = word_state * (1 - mask_eos) + tmp_sent_state * mask_eos
-        return mask_loss(logp_list, targets_len,targets)
+        return mask_loss(logp_list, targets_len, targets)
 
     def sample(self, sent_state, max_sent_len, target_kws):
         """
@@ -62,7 +63,7 @@ class DecoderRNN(nn.Module):
         last_word = last_word.cuda() if use_cuda else last_word
 
         for s in range(nsent):
-            word_state = sent_state
+            word_state = sent_state.clone()
             keyword = Variable(target_kws[:, s])
             last_word_idx = 0
             for _ in range(max_sent_len):
@@ -80,21 +81,3 @@ class DecoderRNN(nn.Module):
                 res.append(self.EOS_IDX)
             sent_output, sent_state = self.sent_rnn(word_output, sent_state)
         return res
-
-def mask_loss(logp_list, target_lens, targets):
-    """
-    logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
-    target_lens: list of target lens
-    targets: batch x seq
-    """
-    seq_len = targets.size(1)
-    target_lens = torch.LongTensor(target_lens)
-    use_cuda = logp_list[0].is_cuda
-    target_lens = target_lens.cuda() if use_cuda else target_lens
-    loss = 0
-    # offset 1 due to SOS
-    for i in range(seq_len - 1):
-        idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
-        logp = torch.gather(logp_list[i], 1, idx).view(-1)
-        loss += logp[target_lens > i + 1].sum()
-    return -loss
