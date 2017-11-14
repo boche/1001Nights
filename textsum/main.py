@@ -79,62 +79,28 @@ def build_local_index(inputs, targets):
     loc_idx = args.vocab_size  # size of global index
    
     for inp, tgt in zip(inputs, targets):
-        
-        temp_inp, temp_tgt = [], []        
-
-        for i, word in enumerate(inp):
+        tempInp, tempTgt = [], []
+        instance_oov = set()   # hash set for oovs in a single datapoint instance
+        for word in inp:
             if isinstance(word, str):
+                instance_oov.add(word)
                 if word not in loc_word2idx:   # an out-of-vocabulary word
                     loc_word2idx[word] = loc_idx
                     loc_idx2word[loc_idx] = word
                     loc_idx +=1
-                temp_inp.append(loc_word2idx[word])
+                tempInp.append(loc_word2idx[word])
             else:
-                temp_inp.append(word)
+                tempInp.append(word)
  
-        for i, word in enumerate(tgt):
+        for word in tgt:
             # an out-of-vocabulary word that only exists in target will transform to UNK
             if isinstance(word, str):
-                temp_tgt.append(loc_word2idx[word] if word in loc_word2idx else word2idx[UNK])
+                tempTgt.append(loc_word2idx[word] if word in instance_oov else word2idx[UNK])
             else:
-                temp_tgt.append(word)
+                tempTgt.append(word)
         
-        inps.append(temp_inp)
-        tgts.append(temp_tgt)
-
-    inputs = torch.LongTensor(inps)
-    targets = torch.LongTensor(tgts)
-    return inputs, targets, loc_word2idx, loc_idx2word
-
-
-def faulty_build_local_index(inputs, targets):
-    """
-    inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
-    targets: same as above, but for headline.
-    """
-    inps, tgts = [], []
-    loc_word2idx, loc_idx2word = {}, {}
-    loc_idx = args.vocab_size  # size of global index
-
-    for inp, tgt in zip(inputs, targets):
-
-        print(inp, len(loc_word2idx))
-
-        for i, word in enumerate(inp):
-            if isinstance(word, str):
-                if word not in loc_word2idx:   # an out-of-vocabulary word
-                    loc_word2idx[word] = loc_idx
-                    loc_idx2word[loc_idx] = word
-                    loc_idx +=1
-                inp[i] = 99999
-
-        for i, word in enumerate(tgt):
-            # an out-of-vocabulary word that only exists in target will transform to UNK
-            if isinstance(word, str):
-                tgt[i] = 99999 if word in loc_word2idx else word2idx[UNK]
-    
-        inps.append(inp)
-        tgts.append(tgt)
+        inps.append(tempInp)
+        tgts.append(tempTgt)
 
     inputs = torch.LongTensor(inps)
     targets = torch.LongTensor(tgts)
@@ -147,7 +113,6 @@ def train(data):
         loc_word2idx, loc_idx2word = {}, {}
         if args.use_pointer_net:
             inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)
-            # inputs, targets, loc_word2idx, loc_idx2word = faulty_build_local_index(inputs, targets)
         if args.use_cuda:
             targets = targets.cuda()
             inputs = inputs.cuda()
@@ -160,6 +125,7 @@ def train(data):
     random.shuffle(data)
     train_data = data[:-ntest]
     test_data = data[-ntest:]
+ 
     s2s = Seq2Seq.Seq2Seq(args)
     if args.use_cuda:
         s2s = s2s.cuda()
@@ -172,20 +138,18 @@ def train(data):
 
     for ep in range(args.nepochs):
         ts = time.time()
-        batch_idx = 0
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
         epoch_p_gen = 0
         s2s.train(True)
         s2s.requires_grad = True
         
-        for inputs, targets, input_lens, target_lens in train_data[:5000]:
-        # for inputs, targets, input_lens, target_lens in train_data:
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
 
-            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
+            logp, p_gen = s2s(inputs.clone(), input_lens, targets.clone(), oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             s2s_opt.zero_grad()
@@ -194,7 +158,6 @@ def train(data):
             s2s_opt.step()
             epoch_loss += loss.data[0]
             # epoch_p_gen += mask_generation_prob(p_gen)
-            batch_idx += 1
 
             if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
@@ -209,26 +172,31 @@ def train(data):
         s2s.train(False)
         s2s.requires_grad = False
         epoch_loss, sum_len = 0, 0
+
         for inputs, targets, input_lens, target_lens in test_data:
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx) 
-            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
+            logp, p_gen = s2s(inputs.clone(), input_lens, targets.clone(), oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
             epoch_loss += loss.data[0]
+        
         print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
                 % (ep + 1, train_loss, epoch_loss / sum_len, batch_idx, time.time() - ts))
-        model_fname = args.save_path + args.model_fpat % (identifier, ep + 1)
+        model_fname = args.user_dir + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
 
-def idxes2sent(idxes, loc_idx2word):
+
+def idxes2sent(idxes, loc_idx2word, keepSrc=False):
     seq = []
     for idx in idxes.numpy():
-        if idx == word2idx[SOS]:
-            continue
-        if idx == word2idx[EOS]:
-            break
-        seq.append(('%s_<COPY>' % loc_idx2word[idx]) if idx in loc_idx2word else idx2word[idx])
+        if idx == word2idx[SOS]: continue
+        if idx == word2idx[EOS]: break
+        if keepSrc:
+            seq.append(loc_idx2word.get(idx, idx2word[idx]))
+        else:
+            seq.append('[COPY]_%s' % loc_idx2word[idx] if idx in loc_idx2word else idx2word[idx])
+    
     # some characters may not be printable if not encode by utf-8
     return " ".join(seq).encode('utf-8').decode("utf-8")
 
@@ -254,11 +222,12 @@ def visualization(input_text, output_text, gold_text, attn):
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-    plt.savefig("%s/figure/attn/%s.png" % (args.save_path, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
+    plt.savefig("%s/figure/attn/%s.png" % (args.user_dir, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_size, beam_search=True):
-    logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, oov_size, beam_search)
+    logp, list_symbols, attns, p_gens = s2s.summarize(inputs.clone(), input_lens, oov_size, beam_search)
+
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
     decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
     visualize = beam_search is False and args.visualize and args.attn_model != 'none'
@@ -272,14 +241,14 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_s
         1 instance.
         """
         symbols = list_symbols[i]
-        srcText = idxes2sent(inputs[i].cpu(), loc_idx2word)
+        srcText = idxes2sent(inputs[i].cpu(), loc_idx2word, keepSrc=True)
+        truth = idxes2sent(targets[i].cpu(), loc_idx2word, keepSrc=True)
         prediction = idxes2sent(symbols.cpu().data, loc_idx2word)
-        truth = idxes2sent(targets[i].cpu(), loc_idx2word)
         hyps[decode_approach].append(prediction)
         refs[decode_approach].append(truth)
+        
         if visualize:
             visualization(srcText, prediction, truth, attns[i, :, :])
-
         print("<Source Text>: %s" % srcText)
         print("<Ground Truth>: %s" % truth)
         print("<%s>: %s\n%s" % (decode_approach, prediction, 80 * '-'))
@@ -321,8 +290,8 @@ def test(model_path, testset, test_size=10000, is_text=True):
             print("%s: %s" % (metric, s))
 
 def vec2text_from_full():
-    idx2word_full = pickle.load(open(args.save_path + 'nyt/idx2word_full.pkl', 'rb'))
-    data = pickle.load(open(args.save_path + 'nyt/nyt_eng_200912.pkl', 'rb'))
+    idx2word_full = pickle.load(open(args.user_dir + 'nyt/idx2word_full.pkl', 'rb'))
+    data = pickle.load(open(args.user_dir + 'nyt/nyt_eng_200912.pkl', 'rb'))
     data_text = []
     for docid, headline, body in data:
         if len(headline) > 0 and len(body) > 0:
@@ -333,21 +302,17 @@ def vec2text_from_full():
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--vecdata', type=str, default=
-            # "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000.pkl")
-        "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data_std_v50000_keepOOV.pkl")
-    
-    argparser.add_argument('--save_path', type=str, default=
-            "/pylon5/ir3l68p/haomingc/1001Nights/")
-    argparser.add_argument('--test_fpath', type=str, default=
-            "/pylon5/ir3l68p/haomingc/1001Nights/standard_giga/test/test_data.pkl")
+    argparser.add_argument('--user_dir', type=str, default='/pylon5/ir3l68p/haomingc/1001Nights/')
+    # argparser.add_argument('--vecData_path', type=str, default="standard_giga/train/train_data_std_v50000.pkl")
+    argparser.add_argument('--vecData_path', type=str, default="standard_giga/train/train_data_std_v50000_keepOOV.pkl")
+    argparser.add_argument('--testData_path', type=str, default="standard_giga/test/test_data.pkl")
     argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
     argparser.add_argument('--test_size', type=int, default=10000)
     argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
     argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
     argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
     argparser.add_argument('--use_cuda', action='store_true', default = False)
-    argparser.add_argument('--batch_size', type=int, default=128)
+    argparser.add_argument('--batch_size', type=int, default=256)
     argparser.add_argument('--emb_size', type=int, default=64)
     argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
@@ -365,12 +330,14 @@ if __name__ == "__main__":
     argparser.add_argument('--use_pointer_net', action='store_true', default = False)
 
     args = argparser.parse_args()
-    for k, v in args.__dict__.items():
-        print('- {} = {}'.format(k, v))
+    for param in vars(args):
+        if "path" in param:   # append user root dir as prefix to path-related parameters
+            setattr(args, param, args.user_dir + getattr(args, param))
+        print('- {} = {}'.format(param, getattr(args, param)))
 
     # There are two types of data, vecdata already transforms the word to idx,
     # replace word OOV with idx of UNK; the other is raw text.
-    vecdata = pickle.load(open(args.vecdata, "rb"))
+    vecdata = pickle.load(open(args.vecData_path, "rb"))
     word2idx, idx2word = vecdata["word2idx"], vecdata["idx2word"]
     args.vocab_size = len(word2idx)
 
@@ -381,9 +348,9 @@ if __name__ == "__main__":
     if args.mode == 'train':
         train(group_data(vecdata["text_vecs"]))
     elif args.mode == 'test':
-        model_path = args.save_path + args.model_name
+        model_path = args.user_dir + args.model_name
         if args.data_src == 'xml':
             testset = vec2text_from_full()
         if args.data_src == 'std':
-            testset = pickle.load(open(args.test_fpath, 'rb'))
+            testset = pickle.load(open(args.testData_path, 'rb'))
         test(model_path, testset)
