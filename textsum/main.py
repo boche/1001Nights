@@ -51,19 +51,6 @@ def next_batch(batch_idx, data):
         targets = torch.LongTensor(targets)
     return inputs, targets, input_lens, target_lens
 
-def mask_generation_prob(prob_list, target_lens):
-    """
-    prob_list: list of p_gens (not include prob for <SOS>); batch_size x 1
-    target_lens: list; note that target_len includes <SOS> and <EOS> for each sentence
-    """
-    prob_sum = 0
-    for i in range(len(prob_list)):  
-        p_gen = prob_list[i].data.cpu().numpy()
-        for j in range(len(p_gen)):
-            prob_sum += p_gen[j] if target_lens[j] > i + 1 else 0 
-    return prob_sum
-
-
 def build_local_index(inputs, targets):
     """
     inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])

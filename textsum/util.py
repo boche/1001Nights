@@ -34,3 +34,14 @@ def p_mask_loss(p_list, target_lens, targets):
         logp = torch.log(torch.gather(p_list[i], 1, idx).view(-1))
         loss += logp[target_lens > i + 1].sum()
     return -loss
+
+def mask_generation_prob(prob_list, target_lens):
+    """
+    prob_list: list of p_gens (not include prob for <SOS>); batch_size x 1
+    target_lens: list; note that target_len includes <SOS> and <EOS> for each sentence
+    """
+    prob_sum = 0
+    probs = torch.stack(prob_list).transpose(0, 1).data.cpu().numpy() # b x s
+    for i, prob in enumerate(probs):
+        prob_sum += prob[:target_lens[i] - 1].sum()
+    return prob_sum
