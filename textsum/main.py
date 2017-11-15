@@ -6,6 +6,7 @@ import numpy as np
 import time
 import pickle
 from tokens import *
+from util import *
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -50,18 +51,6 @@ def next_batch(batch_idx, data):
         inputs = torch.LongTensor(inputs)
         targets = torch.LongTensor(targets)
     return inputs, targets, input_lens, target_lens
-
-def mask_generation_prob(prob_list, target_lens):
-    """
-    prob_list: list of p_gens (not include prob for <SOS>); batch_size x 1
-    target_lens: list; note that target_len includes <SOS> and <EOS> for each sentence
-    """
-    prob_sum = 0
-    for i in range(len(prob_list)):  
-        p_gen = prob_list[i].data.cpu().numpy()
-        for j in range(len(p_gen)):
-            prob_sum += p_gen[j] if target_lens[j] > i + 1 else 0 
-    return prob_sum
 
 
 def build_local_index(inputs, targets):
@@ -138,7 +127,7 @@ def train(data):
         s2s.train(True)
         s2s.requires_grad = True
         
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:50]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
@@ -151,7 +140,7 @@ def train(data):
             torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
             s2s_opt.step()
             epoch_loss += loss.data[0]
-            epoch_p_gen += mask_generation_prob(p_gen, target_lens)
+            epoch_p_gen += mask_generation_prob(p_gen, target_lens) if args.use_pointer_net else 0
 
             if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
@@ -176,7 +165,7 @@ def train(data):
             sum_len += sum(target_lens)
             sum_len_fixed += sum(target_lens) - len(target_lens)
             epoch_loss += loss.data[0]
-            epoch_p_gen += mask_generation_prob(p_gen, target_lens)
+            epoch_p_gen += mask_generation_prob(p_gen, target_lens) if args.use_pointer_net else 0
         
         test_loss = epoch_loss / sum_len
         test_p_gen = epoch_p_gen / sum_len_fixed
@@ -197,31 +186,6 @@ def idxes2sent(idxes, loc_idx2word, keepSrc=False):
     
     # some characters may not be printable if not encode by utf-8
     return " ".join(seq).encode('utf-8').decode("utf-8")
-
-def visualization(input_text, output_text, gold_text, attn):
-    """
-    attn: output_s x input_s
-    """
-    input_words = [''] + input_text.split(' ')
-    output_words = [''] + output_text.split(' ') + [EOS]
-    attn = attn.data.cpu().numpy()[:len(output_words) - 1, :]
-
-    fig = plt.figure()
-    fig.set_size_inches(8, 5)
-    ax = fig.add_subplot(111)
-    cax = ax.matshow(attn, cmap='bone')
-    fig.colorbar(cax, orientation='horizontal')
-
-    # Set up axes
-    ax.set_xticklabels(input_words, rotation=90)
-    ax.set_yticklabels(output_words)
-
-    # Show label at every tick
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-
-    plt.savefig("%sfigure/attn/%s.png" % (args.user_dir, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
-    plt.close()
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_size, beam_search=True):
     logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, oov_size, beam_search)
@@ -291,17 +255,6 @@ def test(model_path, testset, test_size=10000, is_text=True):
         for metric, f1_prec_recl in avg_score.items():
             s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]), f1_prec_recl.items())))
             print("%s: %s" % (metric, s))
-
-def vec2text_from_full():
-    idx2word_full = pickle.load(open(args.user_dir + 'nyt/idx2word_full.pkl', 'rb'))
-    data = pickle.load(open(args.user_dir + 'nyt/nyt_eng_200912.pkl', 'rb'))
-    data_text = []
-    for docid, headline, body in data:
-        if len(headline) > 0 and len(body) > 0:
-            raw_headline = [idx2word_full[w] for w in headline]
-            raw_body = [idx2word_full[w] for w in body]
-            data_text.append((docid, raw_headline, raw_body))
-    return data_text
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
