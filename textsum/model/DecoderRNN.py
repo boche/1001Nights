@@ -55,11 +55,10 @@ class DecoderRNN(nn.Module):
         
         if self.use_pointer_net:
             p_vocab = F.softmax(self.out(concat_output))
-            logp, p_gen = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw, oov_size)
+            p_logp, p_gen = self.getPointerOutput(p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw, oov_size)
         else:
-            logp = F.log_softmax(self.out(concat_output))
-        return logp, h, concat_output, attn_weights, p_gen
-    
+            p_logp = F.log_softmax(self.out(concat_output))
+        return p_logp, h, concat_output, attn_weights, p_gen
 
     def getPointerOutput(self, p_vocab, context, attn_weights, input_emb, rnn_output, inputs_raw, oov_size):
         """
@@ -90,7 +89,8 @@ class DecoderRNN(nn.Module):
         # print(inputs_raw[13, :].cpu().numpy())
         # print('p_extVocab: ', p_extVocab[1, self.vocab_size - 2:].cpu().data.numpy())
         # print(p_gen.cpu().data.numpy())
-        return torch.log(p_extVocab), p_gen
+        # return torch.log(p_extVocab), p_gen
+        return p_extVocab, p_gen
     
     def getRNNOutput(self, batch_input, h):
         # input_emb = self.dropout(self.emb(batch_input).unsqueeze(1)) # b x 1 x hdim
@@ -118,12 +118,15 @@ class DecoderRNN(nn.Module):
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
-                logp, h = self.getRNNOutput(batch_input, h)
+                p_logp, h = self.getRNNOutput(batch_input, h)
+                #TODO haoming, fix p_gen
+                p_gen = None
             else:
-                logp, h, last_output, _, p_gen = self.getAttnOutput(batch_input, last_output,
-                                              h, encoder_output, inputs_raw, input_lens, oov_size)
+                p_logp, h, last_output, _, p_gen = self.getAttnOutput(
+                        batch_input, last_output, h, encoder_output, inputs_raw,
+                        input_lens, oov_size)
             
-            batch_output.append(logp)
+            batch_output.append(p_logp)
             batch_p_gens.append(p_gen)
             if use_teacher_forcing:
                 batch_input = Variable(target[: ,t])
@@ -131,7 +134,7 @@ class DecoderRNN(nn.Module):
                     # set oov words to <UNK> for decoder input
                     batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
             else:
-                _, batch_input = torch.max(logp, 1, keepdim=False)
+                _, batch_input = torch.max(p_logp, 1, keepdim=False)
                 # TO DO: sample for pointer net (if sampled word is oov)
                 
         return batch_output, batch_p_gens

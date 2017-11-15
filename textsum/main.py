@@ -51,24 +51,6 @@ def next_batch(batch_idx, data):
         targets = torch.LongTensor(targets)
     return inputs, targets, input_lens, target_lens
 
-def mask_loss(logp_list, target_lens, targets):
-    """
-    logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
-    target_lens: list of target lens
-    targets: batch x seq
-    """
-    seq_len = targets.size(1)
-    target_lens = torch.LongTensor(target_lens)
-    use_cuda = logp_list[0].is_cuda
-    target_lens = target_lens.cuda() if use_cuda else target_lens
-    loss = 0
-    # offset 1 due to SOS
-    for i in range(seq_len - 1):
-        idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
-        logp = torch.gather(logp_list[i], 1, idx).view(-1)
-        loss += logp[target_lens > i + 1].sum()
-    return -loss
-
 def mask_generation_prob(prob_list, target_lens):
     """
     prob_list: list of p_gens (not include prob for <SOS>); batch_size x 1
@@ -161,8 +143,7 @@ def train(data):
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
 
-            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
-            loss = mask_loss(logp, target_lens, targets)
+            loss, p_gen = s2s(inputs, input_lens, targets, target_lens, oov_size)
             sum_len += sum(target_lens)
             sum_len_fixed += sum(target_lens) - len(target_lens)
             s2s_opt.zero_grad()
@@ -191,8 +172,7 @@ def train(data):
         for inputs, targets, input_lens, target_lens in test_data:
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx) 
-            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
-            loss = mask_loss(logp, target_lens, targets)
+            loss, p_gen = s2s(inputs, input_lens, targets, target_lens, oov_size)
             sum_len += sum(target_lens)
             sum_len_fixed += sum(target_lens) - len(target_lens)
             epoch_loss += loss.data[0]
@@ -204,7 +184,6 @@ def train(data):
                 % (ep + 1, train_loss, test_loss, train_p_gen, test_p_gen, batch_idx, time.time() - ts))
         model_fname = args.user_dir + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
-
 
 def idxes2sent(idxes, loc_idx2word, keepSrc=False):
     seq = []
