@@ -223,8 +223,8 @@ def visualization(input_text, output_text, gold_text, attn):
     """
     attn: output_s x input_s
     """
-    input_words = [''] + input_text.split(' ')[:-1] # last one is empty
-    output_words = [''] + output_text.split(' ')[:-1] + [EOS]
+    input_words = [''] + input_text.split(' ')
+    output_words = [''] + output_text.split(' ') + [EOS]
     attn = attn.data.cpu().numpy()[:len(output_words) - 1, :]
 
     fig = plt.figure()
@@ -241,7 +241,7 @@ def visualization(input_text, output_text, gold_text, attn):
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-    plt.savefig("%s/figure/attn/%s.png" % (args.user_dir, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
+    plt.savefig("%sfigure/attn/%s.png" % (args.user_dir, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_size, beam_search=True):
@@ -276,10 +276,12 @@ def test(model_path, testset, test_size=10000, is_text=True):
 
     def vectorize(raw_data):
         data_vec = []
+        keepOOV = args.use_pointer_net
         for data in raw_data:
             docid, headline, body = data
-            headline = [word2idx[SOS]] + [word2idx.get(w, word2idx[UNK]) for w in headline] + [word2idx[EOS]]
-            body = [word2idx.get(w, word2idx[UNK]) for w in body[:args.max_text_len]]
+            headline = [word2idx.get(w, w if keepOOV else word2idx[UNK]) for w in headline]
+            headline = [word2idx[SOS]] + headline + [word2idx[EOS]]
+            body = [word2idx.get(w, w if keepOOV else word2idx[UNK]) for w in body[:args.max_text_len]]
             data_vec.append((docid, headline, body))
         return data_vec
 
@@ -296,7 +298,7 @@ def test(model_path, testset, test_size=10000, is_text=True):
     random.seed(15213)
     random.shuffle(testset)
     for _, headline, body in testset[:args.test_size]:
-        inputs, targets, loc_word2idx, loc_idx2word = data_transform(headline, body)
+        inputs, targets, loc_word2idx, loc_idx2word = data_transform([body], [headline])
         oov_size = len(loc_word2idx)
         input_lens = [len(x) for x in inputs.cpu().numpy()]        
         target_lens = [len(x) for x in targets.cpu().numpy()]        

@@ -13,7 +13,7 @@ class PointerNet(nn.Module):
         self.generator = nn.Linear(generator_input_size, 1, bias=True)
 
     def forward(self, context, rnn_output, input_emb):
-        print("calling pointer")
+        # print("calling pointer")
         context = context.squeeze(1)         # B x H
         rnn_output = rnn_output.squeeze(1)   # B x H
 
