@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from .EncoderRNN import EncoderRNN
 from .DecoderRNN import DecoderRNN
+from util import *
 
 class Seq2Seq(nn.Module):
     def __init__(self, args):
@@ -25,12 +26,15 @@ class Seq2Seq(nn.Module):
                 self.nlayers, self.teach_ratio, self.dropout, self.rnn_model,
                 self.use_pointer_net, self.attn_model)
 
-    def forward(self, inputs_ori, input_lens, targets_ori, oov_size):
+    def forward(self, inputs_ori, input_lens, targets_ori, target_lens, oov_size):
         inputs, targets = inputs_ori.clone(), targets_ori.clone()
         inputs_raw = inputs_ori.clone()
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
-        logp, p_gen = self.decoder(targets, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size)
-        return logp, p_gen
+        p_logp, p_gen = self.decoder(targets, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size)
+
+        mask_loss_func = p_mask_loss if self.use_pointer_net else logp_mask_loss
+        loss = mask_loss_func(p_logp, target_lens, targets_ori)
+        return loss, p_gen
 
     def summarize(self, inputs_ori, input_lens, oov_size, beam_search=True):
         inputs, inputs_raw = inputs_ori.clone(), inputs_ori.clone()
