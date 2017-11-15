@@ -67,24 +67,26 @@ def index_file(data_path):
 def group_sentences(sentences, word2idx, pos2idx, raw_idx2word):
     sos_idx, eos_idx = word2idx.get(SOS), word2idx.get(EOS)
     unk_idx = word2idx.get(UNK)
-    eos_indices, text, pos, roots = [], [], [], []
+    eos_indices, text, pos, roots = [], [sos_idx], [pos2idx[SOS]], []
     for word_list, pos_list, root_idx in sentences:
-        word_list = [sos_idx] + [word2idx.get(raw_idx2word[x], unk_idx)
-                for x in word_list][:max_sent_len] + [eos_idx]
+        word_list = [word2idx.get(raw_idx2word[x], unk_idx) for x in word_list
+                ][:max_sent_len] + [eos_idx]
         eos_indices.append(len(word_list))
         text += word_list
-        pos += [pos2idx[SOS]] + pos_list[:max_sent_len] + [pos2idx[EOS]]
+        pos += pos_list[:max_sent_len] + [pos2idx[EOS]]
         roots.append(word2idx.get(raw_idx2word[root_idx], unk_idx))
-    eos_indices = list(np.cumsum(eos_indices) - 1)
+    eos_indices = [int(x) for x in np.cumsum(eos_indices)]
     return eos_indices, text, pos, roots
 
 def show_text(text, idx2word, idx2pos):
     eos_indices, text, pos, roots = text
-    print([idx2word[x] for x in text])
-    print([idx2pos[x] for x in pos])
-    print([idx2word[x] for x in roots])
+    print("src", [idx2word[x] for x in text])
+    print("eos", [idx2word[text[x]] for x in eos_indices])
+    print("pos", [idx2pos[x] for x in pos])
+    print("eos-pos", [idx2pos[pos[x]] for x in eos_indices])
+    print("keyword", [idx2word[x] for x in roots])
 
-def convert_file():
+def convert_file(fmt):
     raw_idx2word, word2cnt, pos2idx, idx2pos = pickle.load(open(
         output_path + "rawdict.pkl", "rb"))
     top_words = [x[0] for x in word2cnt.most_common(vocab_size)]
@@ -97,7 +99,7 @@ def convert_file():
         pos2idx[pos] = len(pos2idx)
 
     docs = []
-    filenames = glob.glob(output_path + "*idx.pkl")
+    filenames = glob.glob(output_path + fmt)
     for filename in filenames:
         s = time.time()
         for docid, body in pickle.load(open(filename, "rb")):
@@ -120,7 +122,7 @@ if __name__ == "__main__":
     output_path = "/data/ASR5/bchen2/1001Nights/anno_eng_gigaword_5/"
 
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--mode', type=str, choices=['index', 'convert'], default='convert')   
+    argparser.add_argument('--mode', type=str, choices=['index', 'convert'], default='convert')
     args = argparser.parse_args()
     if args.mode == "index":
         word2idx, word2cnt, idx2word = {}, Counter(), []
@@ -131,4 +133,4 @@ if __name__ == "__main__":
         max_input_sentences = 10
         max_target_sentences = 5
         max_sent_len = 20
-        convert_file()
+        convert_file("apw_eng_2005*idx.pkl")
