@@ -25,14 +25,15 @@ class Seq2Seq(nn.Module):
                 self.nlayers, self.teach_ratio, self.dropout, self.rnn_model,
                 self.use_pointer_net, self.attn_model)
 
-    def forward(self, inputs, input_lens, targets, oov_size):
-        inputs_raw = inputs.clone()
+    def forward(self, inputs_ori, input_lens, targets_ori, oov_size):
+        inputs, targets = inputs_ori.clone(), targets_ori.clone()
+        inputs_raw = inputs_ori.clone()
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         logp, p_gen = self.decoder(targets, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size)
         return logp, p_gen
 
-    def summarize(self, inputs, input_lens, oov_size, beam_search=True):
-        inputs_raw = inputs.clone()
+    def summarize(self, inputs_ori, input_lens, oov_size, beam_search=True):
+        inputs, inputs_raw = inputs_ori.clone(), inputs_ori.clone()
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         logp, symbols = None, None
         if beam_search:

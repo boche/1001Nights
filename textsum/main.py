@@ -69,6 +69,19 @@ def mask_loss(logp_list, target_lens, targets):
         loss += logp[target_lens > i + 1].sum()
     return -loss
 
+def mask_generation_prob(prob_list, target_lens):
+    """
+    prob_list: list of p_gens (not include prob for <SOS>); batch_size x 1
+    target_lens: list; note that target_len includes <SOS> and <EOS> for each sentence
+    """
+    prob_sum = 0
+    for i in range(len(prob_list)):  
+        p_gen = prob_list[i].data.cpu().numpy()
+        for j in range(len(p_gen)):
+            prob_sum += p_gen[j] if target_lens[j] > i + 1 else 0 
+    return prob_sum
+
+
 def build_local_index(inputs, targets):
     """
     inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
@@ -106,18 +119,16 @@ def build_local_index(inputs, targets):
     targets = torch.LongTensor(tgts)
     return inputs, targets, loc_word2idx, loc_idx2word
 
+def data_transform(inputs, targets):
+    loc_word2idx, loc_idx2word = {}, {}
+    if args.use_pointer_net:
+        inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)
+    if args.use_cuda:
+        targets = targets.cuda()
+        inputs = inputs.cuda()
+    return inputs, targets, loc_word2idx, loc_idx2word
 
-def train(data):
-    
-    def data_transform(inputs, targets):
-        loc_word2idx, loc_idx2word = {}, {}
-        if args.use_pointer_net:
-            inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)
-        if args.use_cuda:
-            targets = targets.cuda()
-            inputs = inputs.cuda()
-        return inputs, targets, loc_word2idx, loc_idx2word
-    
+def train(data):    
     nbatch = len(data)
     ntest = nbatch // 50
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
@@ -141,6 +152,7 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, sum_len = 0, 0
         epoch_p_gen = 0
+        sum_len_fixed = 0
         s2s.train(True)
         s2s.requires_grad = True
         
@@ -149,15 +161,16 @@ def train(data):
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
 
-            logp, p_gen = s2s(inputs.clone(), input_lens, targets.clone(), oov_size)
+            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
+            sum_len_fixed += sum(target_lens) - len(target_lens)
             s2s_opt.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
             s2s_opt.step()
             epoch_loss += loss.data[0]
-            # epoch_p_gen += mask_generation_prob(p_gen)
+            epoch_p_gen += mask_generation_prob(p_gen, target_lens)
 
             if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
@@ -168,21 +181,27 @@ def train(data):
                         loc_idx2word, oov_size, beam_search = False)
                 sys.stdout.flush()
         train_loss = epoch_loss / sum_len
+        train_p_gen = epoch_p_gen / sum_len_fixed
 
         s2s.train(False)
         s2s.requires_grad = False
-        epoch_loss, sum_len = 0, 0
+        epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
+        sum_len_fixed = 0
 
         for inputs, targets, input_lens, target_lens in test_data:
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx) 
-            logp, p_gen = s2s(inputs.clone(), input_lens, targets.clone(), oov_size)
+            logp, p_gen = s2s(inputs, input_lens, targets, oov_size)
             loss = mask_loss(logp, target_lens, targets)
             sum_len += sum(target_lens)
+            sum_len_fixed += sum(target_lens) - len(target_lens)
             epoch_loss += loss.data[0]
+            epoch_p_gen += mask_generation_prob(p_gen, target_lens)
         
-        print("Epoch %d, train loss: %.2f, test loss: %.2f, #batch: %d, time %.2f sec"
-                % (ep + 1, train_loss, epoch_loss / sum_len, batch_idx, time.time() - ts))
+        test_loss = epoch_loss / sum_len
+        test_p_gen = epoch_p_gen / sum_len_fixed
+        print("Epoch %d, train loss: %.2f, test loss: %.2f, train p_gen: %.2f, test p_gen: %.2f, #batch: %d, time %.2f sec"
+                % (ep + 1, train_loss, test_loss, train_p_gen, test_p_gen, batch_idx, time.time() - ts))
         model_fname = args.user_dir + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s, model_fname)
 
@@ -192,10 +211,10 @@ def idxes2sent(idxes, loc_idx2word, keepSrc=False):
     for idx in idxes.numpy():
         if idx == word2idx[SOS]: continue
         if idx == word2idx[EOS]: break
-        if keepSrc:
-            seq.append(loc_idx2word.get(idx, idx2word[idx]))
+        if idx < args.vocab_size:
+            seq.append(idx2word[idx])
         else:
-            seq.append('[COPY]_%s' % loc_idx2word[idx] if idx in loc_idx2word else idx2word[idx])
+            seq.append(("" if keepSrc else "[COPY]_") + loc_idx2word[idx])
     
     # some characters may not be printable if not encode by utf-8
     return " ".join(seq).encode('utf-8').decode("utf-8")
@@ -226,7 +245,7 @@ def visualization(input_text, output_text, gold_text, attn):
     plt.close()
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_size, beam_search=True):
-    logp, list_symbols, attns, p_gens = s2s.summarize(inputs.clone(), input_lens, oov_size, beam_search)
+    logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, oov_size, beam_search)
 
     list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
     decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
@@ -268,6 +287,7 @@ def test(model_path, testset, test_size=10000, is_text=True):
     s2s.use_cuda = False    # switch to CPU for testing   
     s2s.train(False)
     s2s.requires_grad = False
+    print(s2s)
 
     # transfrom into indice representation for testing
     if is_text:
@@ -276,10 +296,12 @@ def test(model_path, testset, test_size=10000, is_text=True):
     random.seed(15213)
     random.shuffle(testset)
     for _, headline, body in testset[:args.test_size]:
-        inputs = torch.LongTensor([body])
-        targets = torch.LongTensor([headline])
-        summarize(s2s, inputs, [len(body)], targets, [len(headline)], oov_size, beam_search=False)
-        # summarize(s2s, inputs, [len(body)], targets, [len(headline)], oov_size, beam_search=True)
+        inputs, targets, loc_word2idx, loc_idx2word = data_transform(headline, body)
+        oov_size = len(loc_word2idx)
+        input_lens = [len(x) for x in inputs.cpu().numpy()]        
+        target_lens = [len(x) for x in targets.cpu().numpy()]        
+        summarize(s2s, inputs, input_lens, targets, target_lens,
+                  loc_idx2word, oov_size, beam_search = False)
 
     rouge = Rouge()
     for decode_approach in ["Greedy Search", "Beam Search"]:
@@ -354,3 +376,5 @@ if __name__ == "__main__":
         if args.data_src == 'std':
             testset = pickle.load(open(args.testData_path, 'rb'))
         test(model_path, testset)
+        
+
