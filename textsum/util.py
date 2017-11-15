@@ -49,10 +49,9 @@ def mask_generation_prob(prob_list, target_lens):
     target_lens: list; note that target_len includes <SOS> and <EOS> for each sentence
     """
     prob_sum = 0
-    for i in range(len(prob_list)):
-        p_gen = prob_list[i].data.cpu().numpy()
-        for j in range(len(p_gen)):
-            prob_sum += p_gen[j] if target_lens[j] > i + 1 else 0
+    probs = torch.stack(prob_list).transpose(0, 1).data.cpu().numpy() # b x s
+    for i, prob in enumerate(probs):
+        prob_sum += prob[:target_lens[i] - 1].sum()
     return prob_sum
 
 def visualization(input_text, output_text, gold_text, attn, p_gen, args):
@@ -120,4 +119,3 @@ def vec2text_from_full():
             raw_body = [idx2word_full[w] for w in body]
             data_text.append((docid, raw_headline, raw_body))
     return data_text
-

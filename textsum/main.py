@@ -48,7 +48,6 @@ def next_batch(batch_idx, data):
         targets = torch.LongTensor(targets)
     return inputs, targets, input_lens, target_lens
 
-
 def build_local_index(inputs, targets):
     """
     inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
@@ -123,7 +122,7 @@ def train(data):
         s2s.train(True)
         s2s.requires_grad = True
         
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:50]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
             oov_size = len(loc_word2idx)
