@@ -78,14 +78,6 @@ def group_sentences(sentences, word2idx, pos2idx, raw_idx2word):
     eos_indices = [int(x) for x in np.cumsum(eos_indices)]
     return eos_indices, text, pos, roots
 
-def show_text(text, idx2word, idx2pos):
-    eos_indices, text, pos, roots = text
-    print("src", [idx2word[x] for x in text])
-    print("eos", [idx2word[text[x]] for x in eos_indices])
-    print("pos", [idx2pos[x] for x in pos])
-    print("eos-pos", [idx2pos[pos[x]] for x in eos_indices])
-    print("keyword", [idx2word[x] for x in roots])
-
 def convert_file(fmt):
     raw_idx2word, word2cnt, pos2idx, idx2pos = pickle.load(open(
         output_path + "rawdict.pkl", "rb"))

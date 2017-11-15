@@ -27,6 +27,17 @@ def extend_roots(roots, eos_indices):
         start_idx = end_idx
     return ext_roots
 
+def pad_roots(roots, eos_indices):
+    start_idx, UNK_IDX = 1, 2
+    ext_roots = [UNK_IDX]
+    print("pad_roots")
+    for i, root in enumerate(roots):
+        end_idx = eos_indices[i]
+        ext_roots.append(root)
+        ext_roots += [UNK_IDX] * (end_idx - start_idx)
+        start_idx = end_idx + 1
+    return ext_roots
+
 def next_batch(idx, batch_size, docs):
     """
     docs: list of (docid, input_text, target_text)
@@ -48,6 +59,8 @@ def next_batch(idx, batch_size, docs):
         # target_roots only has one key word per sentence,
         # the extended form has one key word per word
         targets_roots.append(extend_roots(target_roots, target_eos_indices))
+        print("extend_roots", extend_roots(target_roots, target_eos_indices))
+        print("pad_roots", pad_roots(target_roots, target_eos_indices))
 
     inputs_len = [len(x) for x in inputs]
     inputs = [pad_seq(x, max(inputs_len)) for x in inputs]
@@ -81,3 +94,11 @@ def mask_loss(logp_list, target_lens, targets):
         logp = torch.gather(logp_list[i], 1, idx).view(-1)
         loss += logp[target_lens > i + 1].sum()
     return -loss
+
+def show_text(text, idx2word, idx2pos):
+    eos_indices, text, pos, roots = text
+    print("src", [idx2word[x] for x in text])
+    print("eos", [idx2word[text[x]] for x in eos_indices])
+    print("pos", [idx2pos[x] for x in pos])
+    print("eos-pos", [idx2pos[pos[x]] for x in eos_indices])
+    print("keyword", [idx2word[x] for x in roots])
