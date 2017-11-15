@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from .EncoderRNN import EncoderRNN
 from .DecoderRNN import DecoderRNN
+from util import *
 
 class Seq2Seq(nn.Module):
     def __init__(self, args):
@@ -36,8 +37,11 @@ class Seq2Seq(nn.Module):
         linear_func = self.linear_cell if isCell else self.linear_hidden
         return linear_func(encoder_state)
 
-    def forward(self, inputs, input_lens, targets, oov_size):
+    def forward(self, inputs_ori, input_lens, targets_ori, target_lens, oov_size):
+        inputs, targets = inputs_ori.clone(), targets_ori.clone()
+        inputs_raw = inputs_ori.clone()
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
+        
         if self.bidir:
             if self.rnn_model == 'gru':
                 encoder_hidden = self.bidirTrans(encoder_hidden)
@@ -45,10 +49,14 @@ class Seq2Seq(nn.Module):
                 hidden_state = self.bidirTrans(encoder_hidden[0])
                 cell_state = self.bidirTrans(encoder_hidden[1], True)
                 encoder_hidden = (hidden_state, cell_state)
-        logp, p_gen = self.decoder(targets, encoder_hidden, encoder_output, inputs, input_lens, oov_size)
-        return logp, p_gen
+        
+        p_logp, p_gen = self.decoder(targets, encoder_hidden, encoder_output, inputs_raw, input_lens, oov_size)
+        mask_loss_func = p_mask_loss if self.use_pointer_net else logp_mask_loss
+        loss = mask_loss_func(p_logp, target_lens, targets_ori)
+        return loss, p_gen
 
-    def summarize(self, inputs, input_lens, beam_search=True):
+    def summarize(self, inputs_ori, input_lens, oov_size, beam_search=True):
+        inputs, inputs_raw = inputs_ori.clone(), inputs_ori.clone()
         encoder_output, encoder_hidden = self.encoder(inputs, input_lens)
         if self.bidir:
             if self.rnn_model == 'gru':
@@ -63,5 +71,5 @@ class Seq2Seq(nn.Module):
                     self.max_title_len, encoder_output, input_lens)
         else:
             logp, symbols, attns, p_gens = self.decoder.summarize(encoder_hidden,
-                    self.max_title_len, encoder_output, inputs, input_lens)
+                    self.max_title_len, encoder_output, inputs_raw, input_lens, oov_size)
         return logp, symbols, attns, p_gens

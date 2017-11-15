@@ -11,7 +11,8 @@ class EncoderRNN(nn.Module):
         # self.dropout = nn.Dropout(dropout)
         self.emb = emb
         self.use_pointer_net = use_pointer_net
-        
+        self.IDX_UNK = 2  # global index for UNK
+ 
         emb_size = self.emb.weight.size(1)
         rnn_class = nn.GRU if rnn_model == 'gru' else nn.LSTM
         self.rnn = rnn_class(input_size=emb_size, hidden_size = hidden_size, 
@@ -22,9 +23,9 @@ class EncoderRNN(nn.Module):
         inputs: batch x seq_len
         """
         # inputs_emb = self.dropout(self.emb(Variable(inputs)))
-        # set oov words to <UNK> (index = 2) for encoder
+        # set oov words to <UNK> for encoder
         if self.use_pointer_net:
-            inputs[inputs >= self.vocab_size] = 2
+            inputs[inputs >= self.vocab_size] = self.IDX_UNK
         
         inputs_emb = self.emb(Variable(inputs))
         inputs_pack = nn.utils.rnn.pack_padded_sequence(inputs_emb, input_lens, batch_first=True)
