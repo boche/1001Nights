@@ -11,10 +11,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from model import Seq2Seq
-import matplotlib as mpl
-mpl.use('Agg') #adding this because otherwise plt will fail because of no display
-import matplotlib.ticker as ticker
-import matplotlib.pyplot as plt
 from rouge import Rouge
 
 def pad_seq(seq, max_length):
@@ -195,6 +191,7 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_s
     visualize = beam_search is False and args.visualize and args.attn_model != 'none'
     if visualize:   # only plot if it's not beam search
         attns = torch.stack(attns).transpose(0, 1) # b x target_s x input_s
+        p_gens = torch.stack(p_gens)  # max_seq_len x batch_size x 1
 
     for i in range(min(len(targets), 1)):
         """
@@ -210,7 +207,8 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_s
         refs[decode_approach].append(truth)
         
         if visualize:
-            visualization(srcText, prediction, truth, attns[i, :, :])
+            visualization(srcText, prediction, truth, attns[i,:,:], p_gens[:,i,:], args)
+
         print("<Source Text>: %s" % srcText)
         print("<Ground Truth>: %s" % truth)
         print("<%s>: %s\n%s" % (decode_approach, prediction, 80 * '-'))

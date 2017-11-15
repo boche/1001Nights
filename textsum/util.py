@@ -1,5 +1,13 @@
+import numpy as np
 import torch
 from torch.autograd import Variable
+from tokens import *
+import matplotlib as mpl
+mpl.use('Agg') #adding this because otherwise plt will fail because of no display
+import matplotlib.ticker as ticker
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 def logp_mask_loss(logp_list, target_lens, targets):
     """
@@ -47,20 +55,20 @@ def mask_generation_prob(prob_list, target_lens):
             prob_sum += p_gen[j] if target_lens[j] > i + 1 else 0
     return prob_sum
 
-def visualization(input_text, output_text, gold_text, attn):
+def visualization(input_text, output_text, gold_text, attn, p_gen, args):
     """
     attn: output_s x input_s
     """
     input_words = [''] + input_text.split(' ')
     output_words = [''] + output_text.split(' ') + [EOS]
     attn = attn.data.cpu().numpy()[:len(output_words) - 1, :]
-
-    fig = plt.figure()
-    fig.set_size_inches(8, 5)
-    ax = fig.add_subplot(111)
+    p_gen = p_gen.data.cpu().numpy()[:len(output_words) - 1, :]
+    
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(121 if args.use_pointer_net else 111)
     cax = ax.matshow(attn, cmap='bone')
     fig.colorbar(cax, orientation='horizontal')
-
+    
     # Set up axes
     ax.set_xticklabels(input_words, rotation=90)
     ax.set_yticklabels(output_words)
@@ -68,6 +76,36 @@ def visualization(input_text, output_text, gold_text, attn):
     # Show label at every tick
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    
+    if args.use_pointer_net:
+        gs = GridSpec(5, 4)
+        ax_attn = plt.subplot(gs[:, :-1])
+        ax_prob = plt.subplot(gs[1:4, -1:])
+        cax_attn = ax_attn.matshow(attn, cmap='magma') 
+        divider1 = make_axes_locatable(ax_attn)
+        cax1 = divider1.append_axes("right", size='5%', pad=0.05)
+        divider2 = make_axes_locatable(ax_prob)
+        cax2 = divider2.append_axes("right", size='50%', pad=0.05)
+        fig.colorbar(cax_attn, ax=ax_attn, cax=cax1, orientation='vertical')
+        # fig.colorbar(cax_attn, ax=ax_attn, orientation='vertical')
+        cax_prob = ax_prob.matshow(p_gen, cmap='magma')
+        fig.colorbar(cax_prob, ax=ax_prob, cax=cax2, orientation='vertical')    
+        # fig.colorbar(cax_prob, ax=ax_prob, orientation='vertical')    
+        plt.tight_layout()
+        
+        ax_attn.set_title('attention scores') 
+        ax_attn.set_xticklabels(input_words, rotation=90)
+        ax_attn.set_yticklabels(output_words)
+        
+        ax_attn.xaxis.set_ticks_position('bottom')
+        ax_attn.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax_attn.yaxis.set_major_locator(ticker.MultipleLocator(1))
+        
+        ax_prob.set_title('p_gen')
+        ax_prob.set_xticks([])
+        ax_prob.set_xticklabels([])
+        ax_prob.set_yticklabels(output_words)
+        ax_prob.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
     plt.savefig("%sfigure/attn/%s.png" % (args.user_dir, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
