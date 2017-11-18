@@ -54,69 +54,156 @@ def mask_generation_prob(prob_list, target_lens):
         prob_sum += prob[:target_lens[i] - 1].sum()
     return prob_sum
 
-def visualization(input_text, output_text, gold_text, attn, p_gen, args):
+def visualize(input_text, output_text, gold_text, attn, p_gen, args):
     """
     attn: output_s x input_s
     """
     input_words = [''] + input_text.split(' ')
     output_words = [''] + output_text.split(' ') + [EOS]
     attn = attn.data.cpu().numpy()[:len(output_words) - 1, :]
-    p_gen = p_gen.data.cpu().numpy()[:len(output_words) - 1, :]
-    
     fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot(121 if args.use_pointer_net else 111)
-    cax = ax.matshow(attn, cmap='bone')
-    fig.colorbar(cax, orientation='horizontal')
     
-    # Set up axes
-    ax.set_xticklabels(input_words, rotation=90)
-    ax.set_yticklabels(output_words)
-
-    # Show label at every tick
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-    
-    if args.use_pointer_net:
+    if args.use_copy:
         gs = GridSpec(5, 4)
+
         ax_attn = plt.subplot(gs[:, :-1])
-        ax_prob = plt.subplot(gs[1:4, -1:])
-       
         cax_attn = ax_attn.matshow(attn, cmap='bone') 
-        # divider1 = make_axes_locatable(ax_attn)
-        # cax1 = divider1.append_axes("right", size='5%', pad=0.05)
-        # divider2 = make_axes_locatable(ax_prob)
-        # cax2 = divider2.append_axes("right", size='50%', pad=0.05)
-        # fig.colorbar(cax_attn, ax=ax_attn, cax=cax1, orientation='vertical')
         fig.colorbar(cax_attn, ax=ax_attn, orientation='horizontal')
-        cax_prob = ax_prob.matshow(p_gen, cmap='bone')
-        # fig.colorbar(cax_prob, ax=ax_prob, cax=cax2, orientation='vertical')    
-        fig.colorbar(cax_prob, ax=ax_prob, orientation='vertical')    
-        plt.tight_layout()
-        
         ax_attn.set_title('attention scores') 
         ax_attn.set_xticklabels(input_words, rotation=90)
         ax_attn.set_yticklabels(output_words)
-        
         ax_attn.xaxis.set_ticks_position('bottom')
         ax_attn.xaxis.set_major_locator(ticker.MultipleLocator(1))
         ax_attn.yaxis.set_major_locator(ticker.MultipleLocator(1))
         
+        ax_prob = plt.subplot(gs[:, -1:])
+        p_gen = p_gen.data.cpu().numpy()[:len(output_words) - 1, :]
+        cax_prob = ax_prob.matshow(p_gen, cmap='bone')
+        fig.colorbar(cax_prob, ax=ax_prob, orientation='vertical')    
         ax_prob.set_title('p_gen')
         ax_prob.set_xticks([])
         ax_prob.set_xticklabels([])
         ax_prob.set_yticklabels(output_words)
         ax_prob.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    else:
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(attn, cmap='bone')
+        fig.colorbar(cax, orientation='horizontal')
+        
+        # Set up axes
+        ax.set_xticklabels(input_words, rotation=90)
+        ax.set_yticklabels(output_words)
 
-    plt.savefig("%sfigure/attn/%s.png" % (args.user_dir, gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
+        # Show label at every tick
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+
+    plt.tight_layout()
+    plt.savefig("%s/figure/attn/%s.png" % (args.user_dir,
+        gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
     plt.close()
 
-def vec2text_from_full():
-    idx2word_full = pickle.load(open(args.user_dir + 'nyt/idx2word_full.pkl', 'rb'))
-    data = pickle.load(open(args.user_dir + 'nyt/nyt_eng_200912.pkl', 'rb'))
-    data_text = []
-    for docid, headline, body in data:
-        if len(headline) > 0 and len(body) > 0:
-            raw_headline = [idx2word_full[w] for w in headline]
-            raw_body = [idx2word_full[w] for w in body]
-            data_text.append((docid, raw_headline, raw_body))
-    return data_text
+def pad_seq(seq, max_length):
+    seq += [0] * (max_length - len(seq))
+    return seq
+
+def group_data(data, word2idx, args):
+    """
+    data: list of (docid, head, body)
+    """
+    # sort by input length, group inputs with close length in a batch
+    sorted_data = sorted(data, key = lambda x: len(x[2]), reverse = True)
+    nbatches = (len(data) + args.batch_size - 1) // args.batch_size
+    return [next_batch(i, sorted_data, word2idx, args) for i in range(nbatches)]
+
+def next_batch(batch_idx, data, word2idx, args):
+    targets, inputs = [], []
+    start = batch_idx * args.batch_size
+    end = min(len(data), start + args.batch_size)
+
+    # preprocessing should already discard empty documents
+    for i in range(start, end):
+        docid, head, body = data[i]
+        inputs.append(body[:args.max_text_len])
+        targets.append([word2idx[SOS]] + head + [word2idx[EOS]])
+
+    # create a padded sequence
+    input_lens = [len(x) for x in inputs]
+    inputs = [pad_seq(x, max(input_lens)) for x in inputs]
+    target_lens = [len(y) for y in targets]
+    targets = [pad_seq(y, max(target_lens)) for y in targets]
+    return inputs, targets, input_lens, target_lens
+
+def build_local_dict(inputs, targets, word2idx, args):
+    """
+    inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
+    targets: same as above, but for headline.
+    """
+    inps, tgts = [], []
+    loc_word2idx, loc_idx2word = {}, {}
+    loc_idx = args.vocab_size # size of global index
+   
+    for inp, tgt in zip(inputs, targets):
+        tempInp, tempTgt = [], []
+        instance_oov = set() # hash set for oovs in a single datapoint instance
+        for word in inp:
+            if isinstance(word, str): # an out-of-vocabulary word
+                instance_oov.add(word)
+                if word not in loc_word2idx:   
+                    loc_word2idx[word] = loc_idx
+                    loc_idx2word[loc_idx] = word
+                    loc_idx +=1
+                tempInp.append(loc_word2idx[word])
+            else:
+                tempInp.append(word)
+ 
+        for word in tgt:
+            # an oov word that only exists in target will transform to UNK
+            if isinstance(word, str):
+                tempTgt.append(loc_word2idx[word] if word in instance_oov else word2idx[UNK])
+            else:
+                tempTgt.append(word)
+        
+        inps.append(tempInp)
+        tgts.append(tempTgt)
+    return inps, tgts, loc_word2idx, loc_idx2word
+
+def index_oov(inputs, targets, word2idx, args):
+    loc_word2idx, loc_idx2word = {}, {}
+    if args.use_copy:
+        inputs, targets, loc_word2idx, loc_idx2word = build_local_dict(inputs,
+                targets, word2idx, args)
+    inputs, targets = torch.LongTensor(inputs), torch.LongTensor(targets)
+    if args.use_cuda:
+        inputs, targets = inputs.cuda(), targets.cuda()
+    return inputs, targets, loc_word2idx, loc_idx2word
+
+def idxes2sent(idxes, idx2word, loc_idx2word, keepSrc):
+    seq = []
+    for idx in idxes.numpy():
+        if idx < len(idx2word):
+            if idx2word[idx] == SOS: continue
+            if idx2word[idx] == EOS: break
+            seq.append(idx2word[idx])
+        else:
+            seq.append(("" if keepSrc else "[COPY]_") + loc_idx2word[idx])
+    
+    # some characters may not be printable if not encode by utf-8
+    return " ".join(seq).encode('utf-8').decode("utf-8")
+
+def check_args(args):
+    if args.use_copy and args.attn_model == 'none':
+        raise Exception('Attention model should not be none when using copy!')
+    if args.use_bidir and args.attn_model == 'dot':
+        raise Exception("Bidirectional encoder doesn't work with dot attention!")
+
+def vectorize(raw_data, word2idx, args):
+    data_vec = []
+    keepOOV = args.use_copy
+    for data in raw_data:
+        docid, headline, body = data
+        headline = [word2idx.get(w, w if keepOOV else word2idx[UNK]) for w in headline]
+        headline = [word2idx[SOS]] + headline + [word2idx[EOS]]
+        body = [word2idx.get(w, w if keepOOV else word2idx[UNK]) for w in body[:args.max_text_len]]
+        data_vec.append((docid, headline, body))
+    return data_vec

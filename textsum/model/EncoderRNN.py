@@ -3,32 +3,30 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 class EncoderRNN(nn.Module):
-    def __init__(self, vocab_size, emb, hidden_size, nlayers, dropout, rnn_model, use_pointer_net, bidir):
+    def __init__(self, args, emb):
         super(EncoderRNN, self).__init__()
-        self.vocab_size = vocab_size
-        self.nlayers = nlayers
-        self.hidden_size = hidden_size
-        # self.dropout = nn.Dropout(dropout)
-        self.emb = emb
-        self.use_pointer_net = use_pointer_net
+        self.vocab_size = args.vocab_size
+        self.use_copy = args.use_copy
         self.IDX_UNK = 2  # global index for UNK
+        self.emb = emb
  
         emb_size = self.emb.weight.size(1)
-        rnn_class = nn.GRU if rnn_model == 'gru' else nn.LSTM
-        self.rnn = rnn_class(input_size=emb_size, hidden_size = hidden_size, 
-                dropout = dropout, num_layers = nlayers, batch_first = True, bidirectional = bidir)
+        rnn_class = nn.GRU if args.rnn_model == 'gru' else nn.LSTM
+        self.rnn = rnn_class(input_size=emb_size, hidden_size = args.hidden_size, 
+                num_layers = args.nlayers, bidirectional = args.use_bidir,
+                batch_first = True)
 
-    def forward(self, inputs, input_lens):
+    def forward(self, inputs, input_lens, is_volatile):
         """
         inputs: batch x seq_len
         """
-        # inputs_emb = self.dropout(self.emb(Variable(inputs)))
-        # set oov words to <UNK> for encoder
-        if self.use_pointer_net:
+        if self.use_copy:
+            # set oov words to <UNK> for encoder
             inputs[inputs >= self.vocab_size] = self.IDX_UNK
         
-        inputs_emb = self.emb(Variable(inputs))
-        inputs_pack = nn.utils.rnn.pack_padded_sequence(inputs_emb, input_lens, batch_first=True)
+        inputs_emb = self.emb(Variable(inputs, volatile = is_volatile))
+        inputs_pack = nn.utils.rnn.pack_padded_sequence(inputs_emb, input_lens,
+                batch_first=True)
         output_pack, hidden = self.rnn(inputs_pack)
         output, _ = nn.utils.rnn.pad_packed_sequence(output_pack, batch_first=True)
         return output, hidden

@@ -8,263 +8,152 @@ import pickle
 from tokens import *
 from util import *
 import torch
-import torch.nn as nn
-from torch.autograd import Variable
-from model import Seq2Seq
+from model.Seq2Seq import Seq2Seq
 from rouge import Rouge
 
-def pad_seq(seq, max_length):
-    seq += [0] * (max_length - len(seq))
-    return seq
-
-def group_data(data):
-    """
-    data: list of (docid, head, body)
-    """
-    # sort by input length, group inputs with close length in a batch
-    sorted_data = sorted(data, key = lambda x: len(x[2]), reverse = True)
-    nbatches = (len(data) + args.batch_size - 1) // args.batch_size
-    return [next_batch(i, sorted_data) for i in range(nbatches)]
-
-def next_batch(batch_idx, data):
-    targets, inputs = [], []
-    start = batch_idx * args.batch_size
-    end = min(len(data), (batch_idx + 1) * args.batch_size)
-
-    # preprocessing should already discard empty documents
-    for i in range(start, end):
-        docid, head, body = data[i]
-        inputs.append(body[:args.max_text_len])
-        targets.append([word2idx[SOS]] + head + [word2idx[EOS]])
-
-    # create a padded sequence
-    input_lens = [len(x) for x in inputs]
-    inputs = [pad_seq(x, max(input_lens)) for x in inputs]
-    target_lens = [len(y) for y in targets]
-    targets = [pad_seq(y, max(target_lens)) for y in targets]
-   
-    if not args.use_pointer_net:
-        inputs = torch.LongTensor(inputs)
-        targets = torch.LongTensor(targets)
-    return inputs, targets, input_lens, target_lens
-
-def build_local_index(inputs, targets):
-    """
-    inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
-    targets: same as above, but for headline.
-    """
-    inps, tgts = [], []
-    loc_word2idx, loc_idx2word = {}, {}
-    loc_idx = args.vocab_size  # size of global index
-   
-    for inp, tgt in zip(inputs, targets):
-        tempInp, tempTgt = [], []
-        instance_oov = set()   # hash set for oovs in a single datapoint instance
-        for word in inp:
-            if isinstance(word, str):
-                instance_oov.add(word)
-                if word not in loc_word2idx:   # an out-of-vocabulary word
-                    loc_word2idx[word] = loc_idx
-                    loc_idx2word[loc_idx] = word
-                    loc_idx +=1
-                tempInp.append(loc_word2idx[word])
-            else:
-                tempInp.append(word)
- 
-        for word in tgt:
-            # an out-of-vocabulary word that only exists in target will transform to UNK
-            if isinstance(word, str):
-                tempTgt.append(loc_word2idx[word] if word in instance_oov else word2idx[UNK])
-            else:
-                tempTgt.append(word)
-        
-        inps.append(tempInp)
-        tgts.append(tempTgt)
-
-    inputs = torch.LongTensor(inps)
-    targets = torch.LongTensor(tgts)
-    return inputs, targets, loc_word2idx, loc_idx2word
-
-def data_transform(inputs, targets):
-    loc_word2idx, loc_idx2word = {}, {}
-    if args.use_pointer_net:
-        inputs, targets, loc_word2idx, loc_idx2word = build_local_index(inputs, targets)
-    if args.use_cuda:
-        targets = targets.cuda()
-        inputs = inputs.cuda()
-    return inputs, targets, loc_word2idx, loc_idx2word
-
-def train(data):    
+def train(data):
     nbatch = len(data)
-    ntest = nbatch // 50
+    nval = nbatch // 50
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     random.seed(15213)
     random.shuffle(data)
-    train_data = data[:-ntest]
-    test_data = data[-ntest:]
- 
-    s2s = Seq2Seq.Seq2Seq(args)
+    train_data, val_data = data[:-nval], data[-nval:]
+
+    s2s = Seq2Seq(args)
     if args.use_cuda:
         s2s = s2s.cuda()
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr = args.learning_rate,
             weight_decay = args.l2)
+    print("Identifier:", identifier)
     print(s2s)
-    for param in s2s.parameters():
-        print(param.data.size())
-    print("identifier:", identifier)
 
     for ep in range(args.nepochs):
         ts = time.time()
         random.shuffle(train_data)
-        epoch_loss, sum_len = 0, 0
-        epoch_p_gen = 0
-        sum_len_fixed = 0
+        epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
         s2s.train(True)
-        s2s.requires_grad = True
-        
+
         for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
-            inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
+            inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
+                    targets, word2idx, args)
             oov_size = len(loc_word2idx)
+            loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
+                    oov_size, is_volatile = False)
+            sum_len += sum(target_lens) - len(target_lens)
+            epoch_loss += loss.data[0]
+            if args.use_copy:
+                epoch_p_gen += mask_generation_prob(p_gen, target_lens)
 
-            loss, p_gen = s2s(inputs, input_lens, targets, target_lens, oov_size)
-            sum_len += sum(target_lens)
-            sum_len_fixed += sum(target_lens) - len(target_lens)
             s2s_opt.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
+            # torch.nn.utils.clip_grad_norm(s2s.parameters(), args.max_norm)
             s2s_opt.step()
-            epoch_loss += loss.data[0]
-            epoch_p_gen += mask_generation_prob(p_gen, target_lens) if args.use_pointer_net else 0
 
             if batch_idx % 50 == 0:
                 print("batch %d, time %.1f sec, loss %.2f" % (batch_idx,
                     time.time() - ts, loss.data[0]))
                 s2s.train(False)
-                s2s.requires_grad = False
                 summarize(s2s, inputs, input_lens, targets, target_lens,
-                        loc_idx2word, oov_size, beam_search = False)
+                        loc_idx2word, oov_size, beam_search = False,
+                        show_copy = True)
                 sys.stdout.flush()
-        train_loss = epoch_loss / sum_len
-        train_p_gen = epoch_p_gen / sum_len_fixed
+        train_loss, train_p_gen = epoch_loss / sum_len, epoch_p_gen / sum_len
 
         s2s.train(False)
         s2s.requires_grad = False
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
         sum_len_fixed = 0
 
-        for inputs, targets, input_lens, target_lens in test_data:
-            inputs, targets, loc_word2idx, loc_idx2word = data_transform(inputs, targets)
-            oov_size = len(loc_word2idx) 
-            loss, p_gen = s2s(inputs, input_lens, targets, target_lens, oov_size)
-            sum_len += sum(target_lens)
-            sum_len_fixed += sum(target_lens) - len(target_lens)
+        for inputs, targets, input_lens, target_lens in val_data:
+            inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
+                    targets, word2idx, args)
+            loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
+                    len(loc_word2idx), is_volatile = True)
+            sum_len += sum(target_lens) - len(target_lens)
             epoch_loss += loss.data[0]
-            epoch_p_gen += mask_generation_prob(p_gen, target_lens) if args.use_pointer_net else 0
-        
-        test_loss = epoch_loss / sum_len
-        test_p_gen = epoch_p_gen / sum_len_fixed
-        print("Epoch %d, train loss: %.2f, test loss: %.2f, train p_gen: %.2f, test p_gen: %.2f, #batch: %d, time %.2f sec"
-                % (ep + 1, train_loss, test_loss, train_p_gen, test_p_gen, batch_idx, time.time() - ts))
+            if args.use_copy:
+                epoch_p_gen += mask_generation_prob(p_gen, target_lens)
+
+        val_loss, val_p_gen = epoch_loss / sum_len, epoch_p_gen / sum_len
+        print("Epoch %d, train loss: %.2f, val loss: %.2f, train p_gen: %.2f, val p_gen: %.2f, #batch: %d, time %.2f sec"
+                % (ep + 1, train_loss, val_loss, train_p_gen, val_p_gen,
+                    batch_idx, time.time() - ts))
         model_fname = args.user_dir + args.model_fpat % (identifier, ep + 1)
-        torch.save(s2s, model_fname)
+        torch.save(s2s.state_dict(), model_fname)
 
-def idxes2sent(idxes, loc_idx2word, keepSrc=False):
-    seq = []
-    for idx in idxes.numpy():
-        if idx == word2idx[SOS]: continue
-        if idx == word2idx[EOS]: break
-        if idx < args.vocab_size:
-            seq.append(idx2word[idx])
-        else:
-            seq.append(("" if keepSrc else "[COPY]_") + loc_idx2word[idx])
-    
-    # some characters may not be printable if not encode by utf-8
-    return " ".join(seq).encode('utf-8').decode("utf-8")
+def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word,
+        oov_size, beam_search, show_copy):
+    list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, oov_size,
+            beam_search, is_volatile = True)
+    symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
+    decode_approach = 'Beam' if beam_search else 'Greedy'
 
-def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word, oov_size, beam_search=True):
-    logp, list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, oov_size, beam_search)
+    use_visualization = beam_search is False and args.use_visualization and (
+            args.attn_model != 'none')
+    if use_visualization:   # only plot if it's not beam search
+        attns = torch.stack(attns).transpose(0, 1)[0,:,:] # 1 x target_s x input_s
+        p_gens = torch.stack(p_gens)[:,0,:] if args.use_copy else [] # max_seq_len x 1 x 1
 
-    list_symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
-    decode_approach = 'Beam Search' if beam_search else 'Greedy Search'
-    visualize = beam_search is False and args.visualize and args.attn_model != 'none'
-    if visualize:   # only plot if it's not beam search
-        attns = torch.stack(attns).transpose(0, 1) # b x target_s x input_s
-        p_gens = torch.stack(p_gens)  # max_seq_len x batch_size x 1
+    # In train, we only show the first instance. In test, batch is of size 1.
+    srcText = idxes2sent(inputs[0].cpu(), idx2word, loc_idx2word, keepSrc=True)
+    truth = idxes2sent(targets[0].cpu(), idx2word, loc_idx2word, keepSrc=True)
+    prediction = idxes2sent(symbols[0].cpu().data, idx2word, loc_idx2word,
+            keepSrc = not show_copy)
 
-    for i in range(min(len(targets), 1)):
-        """
-        In train, we want to limit the summarize size for each batch to only 1
-        to save time. In test, the data is prepared so that each batch only has
-        1 instance.
-        """
-        symbols = list_symbols[i]
-        srcText = idxes2sent(inputs[i].cpu(), loc_idx2word, keepSrc=True)
-        truth = idxes2sent(targets[i].cpu(), loc_idx2word, keepSrc=True)
-        prediction = idxes2sent(symbols.cpu().data, loc_idx2word)
-        hyps[decode_approach].append(prediction)
-        refs[decode_approach].append(truth)
-        
-        if visualize:
-            visualization(srcText, prediction, truth, attns[i,:,:], p_gens[:,i,:], args)
+    if use_visualization:
+        visualize(srcText, prediction, truth, attns, p_gens, args)
 
-        print("<Source Text>: %s" % srcText)
-        print("<Ground Truth>: %s" % truth)
-        print("<%s>: %s\n%s" % (decode_approach, prediction, 80 * '-'))
+    print("<Source Text>: %s" % srcText)
+    print("<Ground Truth>: %s" % truth)
+    print("<%s>: %s\n%s" % (decode_approach, prediction, 80 * '-'))
+    return prediction, truth
 
-def test(model_path, testset, test_size=10000, is_text=True):
-
-    def vectorize(raw_data):
-        data_vec = []
-        keepOOV = args.use_pointer_net
-        for data in raw_data:
-            docid, headline, body = data
-            headline = [word2idx.get(w, w if keepOOV else word2idx[UNK]) for w in headline]
-            headline = [word2idx[SOS]] + headline + [word2idx[EOS]]
-            body = [word2idx.get(w, w if keepOOV else word2idx[UNK]) for w in body[:args.max_text_len]]
-            data_vec.append((docid, headline, body))
-        return data_vec
-
-    s2s = torch.load(model_path, map_location=lambda storage, loc: storage)
-    s2s.use_cuda = False    # switch to CPU for testing   
+def test(model_path, testset):
+    s2s = Seq2Seq(args)
+    s2s.load_state_dict(torch.load(model_path))
+    s2s = s2s.cpu()
     s2s.train(False)
-    s2s.requires_grad = False
     print(s2s)
 
-    # transfrom into indice representation for testing
-    if is_text:
-        testset = vectorize(testset)
-
+    testset = vectorize(testset, word2idx, args)
     random.seed(15213)
     random.shuffle(testset)
+
+    hyps, refs = {'Greedy':[], 'Beam':[]}, {'Greedy':[], 'Beam':[]}
+
     for _, headline, body in testset[:args.test_size]:
-        inputs, targets, loc_word2idx, loc_idx2word = data_transform([body], [headline])
+        inputs, targets, loc_word2idx, loc_idx2word = index_oov([body],
+                [headline], word2idx, args)
         oov_size = len(loc_word2idx)
-        input_lens = [len(x) for x in inputs.cpu().numpy()]        
-        target_lens = [len(x) for x in targets.cpu().numpy()]        
-        summarize(s2s, inputs, input_lens, targets, target_lens,
-                  loc_idx2word, oov_size, beam_search = False)
+        input_lens, target_lens = [inputs.size(1)], [targets.size(1)]
+
+        prediction, truth = summarize(s2s, inputs, input_lens, targets,
+                target_lens, loc_idx2word, oov_size, beam_search = False,
+                show_copy = True)
+        hyps['Greedy'].append(prediction)
+        refs['Greedy'].append(truth)
 
     rouge = Rouge()
-    for decode_approach in ["Greedy Search", "Beam Search"]:
+    # for decode_approach in ["Greedy", "Beam"]:
+    for decode_approach in ["Greedy"]:
         print("Decode Approach: {}".format(decode_approach))
-        avg_score = rouge.get_scores(hyps[decode_approach], refs[decode_approach], avg=True)
+        avg_score = rouge.get_scores(hyps[decode_approach],
+                refs[decode_approach], avg=True)
         for metric, f1_prec_recl in avg_score.items():
-            s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]), f1_prec_recl.items())))
+            s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]),
+                f1_prec_recl.items())))
             print("%s: %s" % (metric, s))
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--user_dir', type=str, default='/pylon5/ir3l68p/haomingc/1001Nights/')
-    # argparser.add_argument('--vecData_path', type=str, default="standard_giga/train/train_data_std_v50000.pkl")
-    argparser.add_argument('--vecData_path', type=str, default="standard_giga/train/train_data_std_v50000_keepOOV.pkl")
-    argparser.add_argument('--testData_path', type=str, default="standard_giga/test/test_data.pkl")
-    argparser.add_argument('--mode', type=str, choices=['train', 'test'], default='test')
+    argparser.add_argument('--train_data_path', type=str, default="standard_giga/train/train_data_std_v50000")
+    argparser.add_argument('--test_data_path', type=str, default="standard_giga/test/test_data.pkl")
+    argparser.add_argument('--model_fpat', type=str, default="model/%s-%02d.model")
+    argparser.add_argument('--model_path', type=str, default="model/5NSA-11.model")
+
     argparser.add_argument('--test_size', type=int, default=10000)
-    argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
-    argparser.add_argument('--model_fpat', type=str, default="s2s-s%s-e%02d.model")
-    argparser.add_argument('--model_name', type=str, default="s2s-sO53Z-e22.model")
-    argparser.add_argument('--use_cuda', action='store_true', default = False)
     argparser.add_argument('--batch_size', type=int, default=256)
     argparser.add_argument('--emb_size', type=int, default=64)
     argparser.add_argument('--hidden_size', type=int, default=256)
@@ -275,38 +164,39 @@ if __name__ == "__main__":
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--dropout', type=float, default=0.0)
-
-    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot', 'concat'], default='none')
-    argparser.add_argument('--visualize', action='store_true', default = False)
-    argparser.add_argument('--max_norm', type=float, default=100.0)
     argparser.add_argument('--l2', type=float, default=0.001)
+    # argparser.add_argument('--max_norm', type=float, default=100.0)
+
+    argparser.add_argument('--test', action='store_true', default = False)
+    argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
-    argparser.add_argument('--use_pointer_net', action='store_true', default = False)
-    argparser.add_argument('--bidir', action='store_true', default = False)
+    argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot', 'concat'], default='none')
+    argparser.add_argument('--use_cuda', action='store_true', default = False)
+    argparser.add_argument('--use_bidir', action='store_true', default = False)
+    argparser.add_argument('--use_copy', action='store_true', default = False)
+    argparser.add_argument('--use_visualization', action='store_true', default = False)
 
     args = argparser.parse_args()
+    # keepOOV keeps raw word for oovs, the other unk unk_idx
+    args.train_data_path += "_keepOOV.pkl" if args.use_copy else ".pkl"
+    check_args(args)
+
     for param in vars(args):
         if "path" in param:   # append user root dir as prefix to path-related parameters
             setattr(args, param, args.user_dir + getattr(args, param))
         print('- {} = {}'.format(param, getattr(args, param)))
 
-    # There are two types of data, vecdata already transforms the word to idx,
-    # replace word OOV with idx of UNK; the other is raw text.
-    vecdata = pickle.load(open(args.vecData_path, "rb"))
-    word2idx, idx2word = vecdata["word2idx"], vecdata["idx2word"]
+    # only train_data has word dictionary
+    train_data = pickle.load(open(args.train_data_path, "rb"))
+    word2idx, idx2word = train_data["word2idx"], train_data["idx2word"]
     args.vocab_size = len(word2idx)
 
-    # for evaluation
-    hyps, refs = {'Greedy Search':[], 'Beam Search':[]}, {'Greedy Search':[], 'Beam Search':[]}
-
-    print("Running mode: {} model...".format(args.mode))
-    if args.mode == 'train':
-        train(group_data(vecdata["text_vecs"]))
-    elif args.mode == 'test':
-        model_path = args.user_dir + args.model_name
-        if args.data_src == 'xml':
-            testset = vec2text_from_full()
-        if args.data_src == 'std':
-            testset = pickle.load(open(args.testData_path, 'rb'))
-        test(model_path, testset)
-        
+    if args.test:
+        args.batch_size = 1
+        args.use_cuda = False
+        test_data = pickle.load(open(args.test_data_path, "rb"))
+        test(args.model_path, test_data)
+    else:
+        # train_batch = group_data(train_data["text_vecs"][:20000], word2idx, args)
+        train_batch = group_data(train_data["text_vecs"], word2idx, args)
+        train(train_batch)

@@ -3,23 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-
 class Attn(nn.Module):
-    def __init__(self, method, hidden_size, bidir):
+    def __init__(self, args):
         super(Attn, self).__init__()
-        self.method = method
-        self.hidden_size = hidden_size
-        self.bidir = bidir
-        
+        self.method = args.attn_model
+        encoder_output_size = args.hidden_size * (2 if args.use_bidir else 1)
+
         if self.method == 'general':
-            encoder_output_size = self.hidden_size * (2 if bidir else 1)
-            self.attn = nn.Linear(encoder_output_size, hidden_size)
-
-        if self.method == 'concat':
-            encoder_output_size = self.hidden_size * (3 if bidir else 2)
-            self.attn = nn.Linear(encoder_output_size, hidden_size)
-            self.v = nn.Linear(self.hidden_size, 1)
-
+            self.attn = nn.Linear(encoder_output_size, args.hidden_size)
+        elif self.method == 'concat':
+            self.attn = nn.Linear(encoder_output_size + args.hidden_size,
+                    args.hidden_size)
+            self.v = nn.Linear(args.hidden_size, 1)
 
     def forward(self, hidden, encoder_outputs, input_lens):
         # encoder_output: B x S x H
