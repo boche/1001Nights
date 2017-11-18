@@ -9,37 +9,21 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def logp_mask_loss(logp_list, target_lens, targets):
+def mask_loss(p_logp_list, target_lens, targets, is_logp):
     """
-    logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
+    p_logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
     target_lens: list of target lens
     targets: batch x seq
     """
     seq_len = targets.size(1)
     target_lens = torch.LongTensor(target_lens)
-    target_lens = target_lens.cuda() if logp_list[0].is_cuda else target_lens
+    target_lens = target_lens.cuda() if p_logp_list[0].is_cuda else target_lens
     loss = 0
     # offset 1 due to SOS
     for i in range(seq_len - 1):
         idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
-        logp = torch.gather(logp_list[i], 1, idx).view(-1)
-        loss += logp[target_lens > i + 1].sum()
-    return -loss
-
-def p_mask_loss(p_list, target_lens, targets):
-    """
-    p_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
-    target_lens: list of target lens
-    targets: batch x seq
-    """
-    seq_len = targets.size(1)
-    target_lens = torch.LongTensor(target_lens)
-    target_lens = target_lens.cuda() if p_list[0].is_cuda else target_lens
-    loss = 0
-    # offset 1 due to SOS
-    for i in range(seq_len - 1):
-        idx = Variable(targets[:, i + 1].contiguous().view(-1, 1)) # b x 1
-        logp = torch.log(torch.gather(p_list[i], 1, idx).view(-1))
+        p_logp = torch.gather(p_logp_list[i], 1, idx).view(-1)
+        logp = p_logp if is_logp else torch.log(p_logp)
         loss += logp[target_lens > i + 1].sum()
     return -loss
 
@@ -62,24 +46,24 @@ def visualize(input_text, output_text, gold_text, attn, p_gen, args):
     output_words = [''] + output_text.split(' ') + [EOS]
     attn = attn.data.cpu().numpy()[:len(output_words) - 1, :]
     fig = plt.figure(figsize=(12, 8))
-    
+
     if args.use_copy:
         gs = GridSpec(5, 4)
 
         ax_attn = plt.subplot(gs[:, :-1])
-        cax_attn = ax_attn.matshow(attn, cmap='bone') 
+        cax_attn = ax_attn.matshow(attn, cmap='bone')
         fig.colorbar(cax_attn, ax=ax_attn, orientation='horizontal')
-        ax_attn.set_title('attention scores') 
+        ax_attn.set_title('attention scores')
         ax_attn.set_xticklabels(input_words, rotation=90)
         ax_attn.set_yticklabels(output_words)
         ax_attn.xaxis.set_ticks_position('bottom')
         ax_attn.xaxis.set_major_locator(ticker.MultipleLocator(1))
         ax_attn.yaxis.set_major_locator(ticker.MultipleLocator(1))
-        
+
         ax_prob = plt.subplot(gs[:, -1:])
         p_gen = p_gen.data.cpu().numpy()[:len(output_words) - 1, :]
         cax_prob = ax_prob.matshow(p_gen, cmap='bone')
-        fig.colorbar(cax_prob, ax=ax_prob, orientation='vertical')    
+        fig.colorbar(cax_prob, ax=ax_prob, orientation='vertical')
         ax_prob.set_title('p_gen')
         ax_prob.set_xticks([])
         ax_prob.set_xticklabels([])
@@ -89,7 +73,7 @@ def visualize(input_text, output_text, gold_text, attn, p_gen, args):
         ax = fig.add_subplot(111)
         cax = ax.matshow(attn, cmap='bone')
         fig.colorbar(cax, orientation='horizontal')
-        
+
         # Set up axes
         ax.set_xticklabels(input_words, rotation=90)
         ax.set_yticklabels(output_words)
@@ -142,28 +126,28 @@ def build_local_dict(inputs, targets, word2idx, args):
     inps, tgts = [], []
     loc_word2idx, loc_idx2word = {}, {}
     loc_idx = args.vocab_size # size of global index
-   
+
     for inp, tgt in zip(inputs, targets):
         tempInp, tempTgt = [], []
         instance_oov = set() # hash set for oovs in a single datapoint instance
         for word in inp:
             if isinstance(word, str): # an out-of-vocabulary word
                 instance_oov.add(word)
-                if word not in loc_word2idx:   
+                if word not in loc_word2idx:
                     loc_word2idx[word] = loc_idx
                     loc_idx2word[loc_idx] = word
                     loc_idx +=1
                 tempInp.append(loc_word2idx[word])
             else:
                 tempInp.append(word)
- 
+
         for word in tgt:
             # an oov word that only exists in target will transform to UNK
             if isinstance(word, str):
                 tempTgt.append(loc_word2idx[word] if word in instance_oov else word2idx[UNK])
             else:
                 tempTgt.append(word)
-        
+
         inps.append(tempInp)
         tgts.append(tempTgt)
     return inps, tgts, loc_word2idx, loc_idx2word
@@ -187,7 +171,7 @@ def idxes2sent(idxes, idx2word, loc_idx2word, keepSrc):
             seq.append(idx2word[idx])
         else:
             seq.append(("" if keepSrc else "[COPY]_") + loc_idx2word[idx])
-    
+
     # some characters may not be printable if not encode by utf-8
     return " ".join(seq).encode('utf-8').decode("utf-8")
 

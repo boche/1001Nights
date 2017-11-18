@@ -69,7 +69,7 @@ class DecoderRNN(nn.Module):
         inputs_raw: indexed inputs without replacing oov to UNK
         attn_weights: B x 1 x S
         """
-        p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1, broadcastable
+        p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1
         batch_size = p_gen.size(0)
         extVocab_size = self.vocab_size + oov_size
         use_cuda = p_gen.data.is_cuda
@@ -131,9 +131,9 @@ class DecoderRNN(nn.Module):
     def summarize(self, h, max_seq_len, encoder_output, inputs, input_lens,
             oov_size):
         """
-        encoder_ouput: b x s x h (2h) 
+        encoder_ouput: b x s x h (2h)
         """
-        batch_size = encoder_output.size(0) 
+        batch_size = encoder_output.size(0)
         last_output = self.initLastOutput(batch_size)
         # here it's assuming SOS has index 0
         batch_input = Variable(torch.zeros(batch_size).long())

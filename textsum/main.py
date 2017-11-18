@@ -19,9 +19,7 @@ def train(data):
     random.shuffle(data)
     train_data, val_data = data[:-nval], data[-nval:]
 
-    s2s = Seq2Seq(args)
-    if args.use_cuda:
-        s2s = s2s.cuda()
+    s2s = Seq2Seq(args).cuda()
     s2s_opt = torch.optim.Adam(s2s.parameters(), lr = args.learning_rate,
             weight_decay = args.l2)
     print("Identifier:", identifier)
@@ -37,9 +35,8 @@ def train(data):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
-            oov_size = len(loc_word2idx)
             loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
-                    oov_size, is_volatile = False)
+                    len(loc_word2idx), is_volatile = False)
             sum_len += sum(target_lens) - len(target_lens)
             epoch_loss += loss.data[0]
             if args.use_copy:
@@ -55,13 +52,11 @@ def train(data):
                     time.time() - ts, loss.data[0]))
                 s2s.train(False)
                 summarize(s2s, inputs, input_lens, targets, target_lens,
-                        loc_idx2word, oov_size, beam_search = False,
-                        show_copy = True)
+                        loc_idx2word, beam_search = False, show_copy = True)
                 sys.stdout.flush()
         train_loss, train_p_gen = epoch_loss / sum_len, epoch_p_gen / sum_len
 
         s2s.train(False)
-        s2s.requires_grad = False
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
         sum_len_fixed = 0
 
@@ -83,15 +78,16 @@ def train(data):
         torch.save(s2s.state_dict(), model_fname)
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word,
-        oov_size, beam_search, show_copy):
-    list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens, oov_size,
-            beam_search, is_volatile = True)
+        beam_search, show_copy):
+    list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens,
+            len(loc_idx2word), beam_search, is_volatile = True)
     symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
     decode_approach = 'Beam' if beam_search else 'Greedy'
 
+    # only plot if it's not beam search
     use_visualization = beam_search is False and args.use_visualization and (
             args.attn_model != 'none')
-    if use_visualization:   # only plot if it's not beam search
+    if use_visualization:
         attns = torch.stack(attns).transpose(0, 1)[0,:,:] # 1 x target_s x input_s
         p_gens = torch.stack(p_gens)[:,0,:] if args.use_copy else [] # max_seq_len x 1 x 1
 
@@ -125,21 +121,20 @@ def test(model_path, testset):
     for _, headline, body in testset[:args.test_size]:
         inputs, targets, loc_word2idx, loc_idx2word = index_oov([body],
                 [headline], word2idx, args)
-        oov_size = len(loc_word2idx)
         input_lens, target_lens = [inputs.size(1)], [targets.size(1)]
 
         prediction, truth = summarize(s2s, inputs, input_lens, targets,
-                target_lens, loc_idx2word, oov_size, beam_search = False,
-                show_copy = True)
+                target_lens, loc_idx2word, beam_search = False,
+                show_copy = False)
         hyps['Greedy'].append(prediction)
         refs['Greedy'].append(truth)
 
     rouge = Rouge()
-    # for decode_approach in ["Greedy", "Beam"]:
-    for decode_approach in ["Greedy"]:
-        print("Decode Approach: {}".format(decode_approach))
-        avg_score = rouge.get_scores(hyps[decode_approach],
-                refs[decode_approach], avg=True)
+    # for approach in ["Greedy", "Beam"]:
+    for approach in ["Greedy"]:
+        print("Decode Approach: {}".format(approach))
+        avg_score = rouge.get_scores(hyps[approach],
+                refs[approach], avg=True)
         for metric, f1_prec_recl in avg_score.items():
             s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]),
                 f1_prec_recl.items())))
@@ -163,15 +158,13 @@ if __name__ == "__main__":
     argparser.add_argument('--max_text_len', type=int, default=32)
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
-    argparser.add_argument('--dropout', type=float, default=0.0)
+    # argparser.add_argument('--dropout', type=float, default=0.0) # not yet supported
     argparser.add_argument('--l2', type=float, default=0.001)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
 
-    argparser.add_argument('--test', action='store_true', default = False)
-    argparser.add_argument('--data_src', type=str, choices=['xml', 'std'], default='std')
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
     argparser.add_argument('--attn_model', type=str, choices=['none', 'general', 'dot', 'concat'], default='none')
-    argparser.add_argument('--use_cuda', action='store_true', default = False)
+    argparser.add_argument('--test', action='store_true', default = False)
     argparser.add_argument('--use_bidir', action='store_true', default = False)
     argparser.add_argument('--use_copy', action='store_true', default = False)
     argparser.add_argument('--use_visualization', action='store_true', default = False)
@@ -197,6 +190,7 @@ if __name__ == "__main__":
         test_data = pickle.load(open(args.test_data_path, "rb"))
         test(args.model_path, test_data)
     else:
+        args.use_cuda = True
         # train_batch = group_data(train_data["text_vecs"][:20000], word2idx, args)
         train_batch = group_data(train_data["text_vecs"], word2idx, args)
         train(train_batch)

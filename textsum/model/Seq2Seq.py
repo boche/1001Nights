@@ -45,8 +45,7 @@ class Seq2Seq(nn.Module):
         p_logp, p_gen = self.decoder(targets.clone(), encoder_hidden,
                 encoder_output, inputs.clone(), input_lens, oov_size)
         # decoder returns p if use_copy, otherwise logp
-        mask_loss_func = p_mask_loss if self.use_copy else logp_mask_loss
-        loss = mask_loss_func(p_logp, target_lens, targets)
+        loss = mask_loss(p_logp, target_lens, targets, is_logp = not self.use_copy)
         return loss, p_gen
 
     def summarize(self, inputs, input_lens, oov_size, beam_search, is_volatile):

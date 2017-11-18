@@ -9,10 +9,10 @@ class EncoderRNN(nn.Module):
         self.use_copy = args.use_copy
         self.IDX_UNK = 2  # global index for UNK
         self.emb = emb
- 
+
         emb_size = self.emb.weight.size(1)
         rnn_class = nn.GRU if args.rnn_model == 'gru' else nn.LSTM
-        self.rnn = rnn_class(input_size=emb_size, hidden_size = args.hidden_size, 
+        self.rnn = rnn_class(input_size=emb_size, hidden_size = args.hidden_size,
                 num_layers = args.nlayers, bidirectional = args.use_bidir,
                 batch_first = True)
 
@@ -23,7 +23,7 @@ class EncoderRNN(nn.Module):
         if self.use_copy:
             # set oov words to <UNK> for encoder
             inputs[inputs >= self.vocab_size] = self.IDX_UNK
-        
+
         inputs_emb = self.emb(Variable(inputs, volatile = is_volatile))
         inputs_pack = nn.utils.rnn.pack_padded_sequence(inputs_emb, input_lens,
                 batch_first=True)
