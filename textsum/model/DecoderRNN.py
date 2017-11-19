@@ -89,7 +89,7 @@ class DecoderRNN(nn.Module):
     def getRNNOutput(self, batch_input, h):
         input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
         rnn_output, h = self.rnn(input_emb, h)
-        xout = self.out(rnn_output).squeeze(1)
+        xout = self.out_fc(rnn_output).squeeze(1)
         logp = F.log_softmax(xout)
         return logp, h
 

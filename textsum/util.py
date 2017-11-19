@@ -132,17 +132,25 @@ def build_local_dict(inputs, targets, word2idx, args):
         instance_oov = set() # hash set for oovs in a single datapoint instance
         for word in inp:
             if isinstance(word, str): # an out-of-vocabulary word
-                instance_oov.add(word)
-                if word not in loc_word2idx:
-                    loc_word2idx[word] = loc_idx
-                    loc_idx2word[loc_idx] = word
-                    loc_idx +=1
-                tempInp.append(loc_word2idx[word])
+                if args.use_copy:
+                    instance_oov.add(word)
+                    if word not in loc_word2idx:
+                        loc_word2idx[word] = loc_idx
+                        loc_idx2word[loc_idx] = word
+                        loc_idx += 1
+                    tempInp.append(loc_word2idx[word])
+                else:
+                    # if not using copy, replace oov with UNK
+                    tempInp.append(word2idx[UNK])
             else:
                 tempInp.append(word)
 
         for word in tgt:
-            # an oov word that only exists in target will transform to UNK
+            """
+            In copy mode, an oov word that only exists in target will transform
+            to UNK. Otherwise, instance_oov should be empty, so all oov will be
+            replaced with UNK.
+            """
             if isinstance(word, str):
                 tempTgt.append(loc_word2idx[word] if word in instance_oov else word2idx[UNK])
             else:
@@ -154,9 +162,8 @@ def build_local_dict(inputs, targets, word2idx, args):
 
 def index_oov(inputs, targets, word2idx, args):
     loc_word2idx, loc_idx2word = {}, {}
-    if args.use_copy:
-        inputs, targets, loc_word2idx, loc_idx2word = build_local_dict(inputs,
-                targets, word2idx, args)
+    inputs, targets, loc_word2idx, loc_idx2word = build_local_dict(inputs,
+            targets, word2idx, args)
     inputs, targets = torch.LongTensor(inputs), torch.LongTensor(targets)
     if args.use_cuda:
         inputs, targets = inputs.cuda(), targets.cuda()

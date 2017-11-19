@@ -143,7 +143,7 @@ def test(model_path, testset):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--user_dir', type=str, default='/pylon5/ir3l68p/haomingc/1001Nights/')
-    argparser.add_argument('--train_data_path', type=str, default="standard_giga/train/train_data_std_v50000")
+    argparser.add_argument('--train_data_path', type=str, default="standard_giga/train/train_data_std_v50000_keepOOV.pkl")
     argparser.add_argument('--test_data_path', type=str, default="standard_giga/test/test_data.pkl")
     argparser.add_argument('--model_fpat', type=str, default="model/%s-%02d.model")
     argparser.add_argument('--model_path', type=str, default="model/5NSA-11.model")
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     argparser.add_argument('--hidden_size', type=int, default=256)
     argparser.add_argument('--nlayers', type=int, default=2)
     argparser.add_argument('--nepochs', type=int, default=30)
-    argparser.add_argument('--max_title_len', type=int, default=20)
+    argparser.add_argument('--max_title_len', type=int, default=32)
     argparser.add_argument('--max_text_len', type=int, default=32)
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
@@ -170,8 +170,6 @@ if __name__ == "__main__":
     argparser.add_argument('--use_visualization', action='store_true', default = False)
 
     args = argparser.parse_args()
-    # keepOOV keeps raw word for oovs, the other unk unk_idx
-    args.train_data_path += "_keepOOV.pkl" if args.use_copy else ".pkl"
     check_args(args)
 
     for param in vars(args):
