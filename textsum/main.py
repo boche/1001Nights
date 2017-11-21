@@ -36,7 +36,8 @@ def train(data):
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
             loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
-                    len(loc_word2idx), is_volatile = False)
+                    len(loc_word2idx), force_scheduled_sampling = False,
+                    is_volatile = False)
             sum_len += sum(target_lens) - len(target_lens)
             epoch_loss += loss.data[0]
             if args.use_copy:
@@ -57,23 +58,35 @@ def train(data):
         train_loss, train_p_gen = epoch_loss / sum_len, epoch_p_gen / sum_len
 
         s2s.train(False)
-        epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
+        loss_tforcing, p_gen_tforcing, sum_len = 0, 0, 0
+        loss_ssampling, p_gen_ssampling = 0, 0
         sum_len_fixed = 0
 
         for inputs, targets, input_lens, target_lens in val_data:
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
-            loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
-                    len(loc_word2idx), is_volatile = True)
             sum_len += sum(target_lens) - len(target_lens)
-            epoch_loss += loss.data[0]
+            # teacher forcing
+            loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
+                    len(loc_word2idx), force_scheduled_sampling = False,
+                    is_volatile = True)
+            loss_tforcing += loss.data[0]
             if args.use_copy:
-                epoch_p_gen += mask_generation_prob(p_gen, target_lens)
+                p_gen_tforcing += mask_generation_prob(p_gen,
+                        target_lens)
+            # scheduled sampling
+            loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
+                    len(loc_word2idx), force_scheduled_sampling = True,
+                    is_volatile = True)
+            loss_ssampling += loss.data[0]
+            if args.use_copy:
+                p_gen_ssampling += mask_generation_prob(p_gen,
+                        target_lens)
 
-        val_loss, val_p_gen = epoch_loss / sum_len, epoch_p_gen / sum_len
-        print("Epoch %d, train loss: %.2f, val loss: %.2f, train p_gen: %.2f, val p_gen: %.2f, #batch: %d, time %.2f sec"
-                % (ep + 1, train_loss, val_loss, train_p_gen, val_p_gen,
-                    batch_idx, time.time() - ts))
+        print("Epoch %d, train %.2f / %.2f, val tforcing %.2f / %.2f, val ssampling %.2f / %.2f, #batch %d, %.0f sec"
+                % (ep + 1, train_loss, train_p_gen, loss_tforcing / sum_len,
+                    p_gen_tforcing / sum_len, loss_ssampling / sum_len,
+                    p_gen_ssampling / sum_len, batch_idx, time.time() - ts))
         model_fname = args.user_dir + args.model_fpat % (identifier, ep + 1)
         torch.save(s2s.state_dict(), model_fname)
 

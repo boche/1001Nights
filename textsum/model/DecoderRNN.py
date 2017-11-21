@@ -99,7 +99,8 @@ class DecoderRNN(nn.Module):
             last_output = last_output.cuda()
         return last_output
 
-    def forward(self, targets, h, encoder_output, inputs, input_lens, oov_size):
+    def forward(self, targets, h, encoder_output, inputs, input_lens, oov_size,
+            force_scheduled_sampling):
         """
         targets: LongTensor, b x s
         """
@@ -107,6 +108,8 @@ class DecoderRNN(nn.Module):
         batch_input = Variable(targets[:, 0]) #SOS, b
         batch_output, batch_p_gens = [], []
         use_teacher_forcing = random.random() < self.teach_ratio
+        if force_scheduled_sampling:
+            use_teacher_forcing = False
         if self.attn_model != 'none':
             last_output = self.initLastOutput(batch_size)
 

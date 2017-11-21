@@ -30,7 +30,7 @@ class Seq2Seq(nn.Module):
         return linear_func(encoder_state)
 
     def forward(self, inputs, input_lens, targets, target_lens, oov_size,
-            is_volatile):
+            force_scheduled_sampling, is_volatile):
         encoder_output, encoder_hidden = self.encoder(inputs.clone(),
                 input_lens, is_volatile)
 
@@ -43,7 +43,8 @@ class Seq2Seq(nn.Module):
                 encoder_hidden = (hidden_state, cell_state)
 
         p_logp, p_gen = self.decoder(targets.clone(), encoder_hidden,
-                encoder_output, inputs.clone(), input_lens, oov_size)
+                encoder_output, inputs.clone(), input_lens, oov_size,
+                force_scheduled_sampling)
         # decoder returns p if use_copy, otherwise logp
         loss = mask_loss(p_logp, target_lens, targets, is_logp = not self.use_copy)
         return loss, p_gen
