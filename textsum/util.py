@@ -109,7 +109,7 @@ def next_batch(batch_idx, data, word2idx, args):
     for i in range(start, end):
         docid, head, body = data[i]
         inputs.append(body[:args.max_text_len])
-        targets.append([word2idx[SOS]] + head + [word2idx[EOS]])
+        targets.append([word2idx[SOS]] + head[:args.max_title_len] + [word2idx[EOS]])
 
     # create a padded sequence
     input_lens = [len(x) for x in inputs]
