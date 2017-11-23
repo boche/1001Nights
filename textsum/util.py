@@ -187,6 +187,8 @@ def check_args(args):
         raise Exception('Attention model should not be none when using copy!')
     if args.fix_pgen >= 0 and not args.use_copy:
         raise Exception('Fix pgen can only be enabled when using copy!')
+    if args.use_separate_training and args.fix_pgen < 0:
+        raise Exception('Separate training only works when fix_pgen >= 0!')
     if args.use_bidir and args.attn_model == 'dot':
         raise Exception("Bidirectional encoder doesn't work with dot attention!")
 

@@ -18,6 +18,7 @@ class DecoderRNN(nn.Module):
         self.rnn_model = args.rnn_model
         self.use_copy = args.use_copy
         self.fix_pgen = args.fix_pgen
+        self.use_separate_training = args.use_separate_training
 
         self.IDX_UNK = 2   # global index for <UNK>
         self.emb = emb
@@ -72,12 +73,19 @@ class DecoderRNN(nn.Module):
         """
         use_cuda = context.is_cuda
         batch_size = attn_weights.size(0)
+        extVocab_size = self.vocab_size + oov_size
+
         if self.fix_pgen < 0:
             p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1
         else:
-            p_gen = Variable(torch.ones(batch_size, 1) * self.fix_pgen)
+            if self.training and self.use_separate_training:
+                ratio = 0.9999 # apply this ratio to avoid inf loss
+                use_gen_probabilty = random.random() < self.fix_pgen
+                ones = Variable(torch.ones(batch_size, 1))
+                p_gen = ones * (ratio if use_gen_probabilty else 1 - ratio)
+            else:
+                p_gen = Variable(torch.ones(batch_size, 1) * self.fix_pgen)
             p_gen = p_gen.cuda() if use_cuda else p_gen
-        extVocab_size = self.vocab_size + oov_size
 
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
         p_gen_vocab = p_gen * p_vocab

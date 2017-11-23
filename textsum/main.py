@@ -173,7 +173,6 @@ if __name__ == "__main__":
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--l2', type=float, default=0.001)
     argparser.add_argument('--fix_pgen', type=float, default=-1) # negative means not activated
-    # argparser.add_argument('--dropout', type=float, default=0.0) # not yet supported
     # argparser.add_argument('--max_norm', type=float, default=100.0)
 
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
@@ -182,6 +181,7 @@ if __name__ == "__main__":
     argparser.add_argument('--use_bidir', action='store_true', default = False)
     argparser.add_argument('--use_copy', action='store_true', default = False)
     argparser.add_argument('--use_visualization', action='store_true', default = False)
+    argparser.add_argument('--use_separate_training', action='store_true', default = False)
 
     args = argparser.parse_args()
     check_args(args)
