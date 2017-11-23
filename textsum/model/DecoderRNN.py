@@ -198,13 +198,13 @@ class DecoderRNN(nn.Module):
                 res, ind = logp.topk(beam_size)
                 for i in range(ind.size(1)):
                     word = ind[0][i]
-                    current_logp = last_logp + logp.data.numpy()[0][word.data.numpy()[0]]
+                    current_logp = last_logp + logp.cpu().data.numpy()[0][word.cpu().data.numpy()[0]]
                     while len(partial_candidates) + 1 > beam_size and current_logp > partial_candidates[0][0]:
                         heapq.heappop(partial_candidates)
 
                     if len(partial_candidates) + 1 <= beam_size:
                         heapq.heappush(partial_candidates, (current_logp,
-                            (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], 
+                            (word.cpu().data.numpy()[0], prev_words+[word.cpu().data.numpy()[0]], outputs+[current_logp], 
                                 h, last_output, prev_attns + [attn_weights], prev_p_gens + [p_gen])))
                     
             last_candidates = partial_candidates
