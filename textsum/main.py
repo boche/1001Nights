@@ -53,7 +53,7 @@ def train(data):
                     time.time() - ts, loss.data[0]))
                 s2s.train(False)
                 summarize(s2s, inputs, input_lens, targets, target_lens,
-                        loc_idx2word, beam_search = False, show_copy = True)
+                        loc_idx2word, beam_search = True, show_copy = True)
                 sys.stdout.flush()
         train_loss, train_p_gen = epoch_loss / sum_len, epoch_p_gen / sum_len
 

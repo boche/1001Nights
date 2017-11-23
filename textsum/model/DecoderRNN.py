@@ -1,4 +1,5 @@
-import heapq
+from heapq import heappush
+from heapq import heappop
 import random
 import numpy as np
 import torch
@@ -178,9 +179,9 @@ class DecoderRNN(nn.Module):
                 # print(last_logp, last_word, prev_words)
                 if last_word.item() == 1: #EOS
                     while len(final_candidates) >= beam_size and last_logp > final_candidates[0][0]:
-                        heapq.heappop(final_candidates)
+                        heappop(final_candidates)
                     if len(final_candidates) < beam_size:
-                        heapq.heappush(final_candidates, (last_logp, prev_words, prev_attns, prev_p_gens))
+                        heappush(final_candidates, (last_logp, prev_words, prev_attns, prev_p_gens))
                     continue
                 if final_candidates and last_logp < final_candidates[0][0]:
                     continue
@@ -198,13 +199,13 @@ class DecoderRNN(nn.Module):
                 res, ind = logp.topk(beam_size)
                 for i in range(ind.size(1)):
                     word = ind[0][i]
-                    current_logp = last_logp + logp.data.numpy()[0][word.data.numpy()[0]]
+                    current_logp = last_logp + logp.cpu().data.numpy()[0][word.cpu().data.numpy()[0]]
                     while len(partial_candidates) + 1 > beam_size and current_logp > partial_candidates[0][0]:
-                        heapq.heappop(partial_candidates)
+                        heappop(partial_candidates)
 
                     if len(partial_candidates) + 1 <= beam_size:
-                        heapq.heappush(partial_candidates, (current_logp,
-                            (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], 
+                        heappush(partial_candidates, (current_logp,
+                            (word.cpu().data.numpy()[0], prev_words+[word.cpu().data.numpy()[0]], outputs+[current_logp], 
                                 h, last_output, prev_attns + [attn_weights], prev_p_gens + [p_gen])))
                     
             last_candidates = partial_candidates
