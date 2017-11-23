@@ -1,5 +1,4 @@
-from heapq import heappush
-from heapq import heappop
+from heapq import heappush, heappop
 import random
 import numpy as np
 import torch
@@ -162,59 +161,54 @@ class DecoderRNN(nn.Module):
 
         return batch_symbol, batch_attn, batch_p_gen
 
-    def summarize_bs(self, h, max_seq_len, encoder_output, inputs, input_lens, 
+    def summarize_bs(self, h, max_seq_len, encoder_output, inputs, input_lens,
             oov_size, beam_size=4):
-        last_output = self.initLastOutput(1) # batch size is always 1
-        # candidates heap: key: last_logp 
-        #   value: (last_word, prev_words, outputs, h, last_output, prev_attns, prev_p_gens)
-        last_candidates = [(0.0 ,
-            (np.int64(0), [np.int64(0)], [0.0], h, last_output, [], []))]
-        final_candidates = []
+        # candidates heap: tot_logp -> (last_word, prev_words, h, last_output)
+        last_candidates = [(0.0 , (0, [0], h, self.initLastOutput(1)))]
+        final_candidate = None
 
         current_depth = 0
         while last_candidates and current_depth < max_seq_len:
             current_depth += 1
             partial_candidates = []
-            for last_logp, (last_word, prev_words, outputs, h, last_output, prev_attns, prev_p_gens) in last_candidates:
-                # print(last_logp, last_word, prev_words)
-                if last_word.item() == 1: #EOS
-                    while len(final_candidates) >= beam_size and last_logp > final_candidates[0][0]:
-                        heappop(final_candidates)
-                    if len(final_candidates) < beam_size:
-                        heappush(final_candidates, (last_logp, prev_words, prev_attns, prev_p_gens))
+            for tot_logp, (last_word, prev_words, h, last_output) in last_candidates:
+                if last_word == 1: #EOS
+                    if final_candidate is None or final_candidate[0] < tot_logp:
+                        final_candidate = (tot_logp, prev_words)
                     continue
-                if final_candidates and last_logp < final_candidates[0][0]:
+                if final_candidate is not None and tot_logp <= final_candidate[0]:
+                    # further expansion will only decrease tot_logp
                     continue
 
-                inp = Variable(torch.Tensor.long(torch.zeros(1)).fill_(last_word.item()))
-                if next(self.parameters()).data.is_cuda:
-                    inp = inp.cuda()
+                if self.use_copy and last_word >= self.vocab_size:
+                    last_word = self.IDX_UNK
+                inp = Variable(torch.ones(1).long() * last_word)
                 if self.attn_model == 'none':
                     logp, h = self.getRNNOutput(inp, h)
-                    attn_weights, p_gen = None, None
                 else:
-                    logp, h, last_output, attn_weights, p_gen = self.getAttnOutput(
-                            inp, last_output, h, encoder_output, inputs,
-                            input_lens, oov_size)
-                res, ind = logp.topk(beam_size)
-                for i in range(ind.size(1)):
-                    word = ind[0][i]
-                    current_logp = last_logp + logp.cpu().data.numpy()[0][word.cpu().data.numpy()[0]]
-                    while len(partial_candidates) + 1 > beam_size and current_logp > partial_candidates[0][0]:
+                    p_logp, h, last_output, _, _ = self.getAttnOutput(inp,
+                            last_output, h, encoder_output, inputs, input_lens,
+                            oov_size)
+                    logp = torch.log(p_logp) if self.use_copy else p_logp
+
+                logp = logp.data
+                _, idxes = logp.topk(beam_size)
+                for word in idxes[0]:
+                    current_logp = tot_logp + logp[0][word]
+                    while len(partial_candidates) >= beam_size and (current_logp
+                            > partial_candidates[0][0]):
                         heappop(partial_candidates)
 
-                    if len(partial_candidates) + 1 <= beam_size:
-                        heappush(partial_candidates, (current_logp,
-                            (word.cpu().data.numpy()[0], prev_words+[word.cpu().data.numpy()[0]], outputs+[current_logp], 
-                                h, last_output, prev_attns + [attn_weights], prev_p_gens + [p_gen])))
-                    
+                    if len(partial_candidates) < beam_size:
+                        heappush(partial_candidates, (current_logp, (word,
+                            prev_words+[word], h, last_output)))
             last_candidates = partial_candidates
 
-        if final_candidates:
-            last_logp, result_sent, prev_attns, prev_p_gens = max(final_candidates)
-        else:
-            last_logp, (_, result_sent, outputs, _, _, prev_attns, prev_p_gens) = max(last_candidates)
-        symbol = []
-        for result in result_sent:
-            symbol.append(Variable(torch.Tensor.long(torch.zeros(1)).fill_(result.item())))
-        return symbol, prev_attns, prev_p_gens
+        tot_logp = None
+        if last_candidates:
+            tot_logp, (_, result_sent, _, _) = max(last_candidates)
+        if final_candidate is not None and (
+                tot_logp is None or tot_logp < final_candidate[0]):
+            tot_logp, result_sent = final_candidate
+        symbol = [Variable(torch.ones(1).long() * x) for x in result_sent]
+        return symbol, [], []

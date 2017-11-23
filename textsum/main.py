@@ -53,7 +53,7 @@ def train(data):
                     time.time() - ts, loss.data[0]))
                 s2s.train(False)
                 summarize(s2s, inputs, input_lens, targets, target_lens,
-                        loc_idx2word, beam_search = True, show_copy = True)
+                        loc_idx2word, beam_search = False, show_copy = True)
                 sys.stdout.flush()
         train_loss, train_p_gen = epoch_loss / sum_len, epoch_p_gen / sum_len
 
@@ -142,9 +142,14 @@ def test(model_path, testset):
         hyps['Greedy'].append(prediction)
         refs['Greedy'].append(truth)
 
+        prediction, truth = summarize(s2s, inputs, input_lens, targets,
+                target_lens, loc_idx2word, beam_search = True,
+                show_copy = False)
+        hyps['Beam'].append(prediction)
+        refs['Beam'].append(truth)
+
     rouge = Rouge()
-    # for approach in ["Greedy", "Beam"]:
-    for approach in ["Greedy"]:
+    for approach in ["Greedy", "Beam"]:
         print("Decode Approach: {}".format(approach))
         avg_score = rouge.get_scores(hyps[approach],
                 refs[approach], avg=True)
