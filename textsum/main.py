@@ -31,7 +31,7 @@ def train(data):
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
         s2s.train(True)
 
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
@@ -171,8 +171,9 @@ if __name__ == "__main__":
     argparser.add_argument('--max_text_len', type=int, default=32)
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
-    # argparser.add_argument('--dropout', type=float, default=0.0) # not yet supported
     argparser.add_argument('--l2', type=float, default=0.001)
+    argparser.add_argument('--fix_pgen', type=float, default=-1) # negative means not activated
+    # argparser.add_argument('--dropout', type=float, default=0.0) # not yet supported
     # argparser.add_argument('--max_norm', type=float, default=100.0)
 
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')

@@ -185,6 +185,8 @@ def idxes2sent(idxes, idx2word, loc_idx2word, keepSrc):
 def check_args(args):
     if args.use_copy and args.attn_model == 'none':
         raise Exception('Attention model should not be none when using copy!')
+    if args.fix_pgen >= 0 and not args.use_copy:
+        raise Exception('Fix pgen can only be enabled when using copy!')
     if args.use_bidir and args.attn_model == 'dot':
         raise Exception("Bidirectional encoder doesn't work with dot attention!")
 

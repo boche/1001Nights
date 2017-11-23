@@ -17,6 +17,7 @@ class DecoderRNN(nn.Module):
         self.attn_model = args.attn_model
         self.rnn_model = args.rnn_model
         self.use_copy = args.use_copy
+        self.fix_pgen = args.fix_pgen
 
         self.IDX_UNK = 2   # global index for <UNK>
         self.emb = emb
@@ -35,7 +36,7 @@ class DecoderRNN(nn.Module):
             concat_size = self.hidden_size * (3 if args.use_bidir else 2)
             self.concat = nn.Linear(concat_size, self.hidden_size)
             self.attn = Attn(args)
-            if self.use_copy:
+            if self.use_copy and self.fix_pgen < 0:
                 self.ptr = PointerNet(args)
 
     def getAttnOutput(self, batch_input, last_output, h, encoder_output, inputs,
@@ -69,10 +70,14 @@ class DecoderRNN(nn.Module):
         inputs_raw: indexed inputs without replacing oov to UNK
         attn_weights: B x 1 x S
         """
-        p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1
-        batch_size = p_gen.size(0)
+        use_cuda = context.is_cuda
+        batch_size = attn_weights.size(0)
+        if self.fix_pgen < 0:
+            p_gen = self.ptr(context, rnn_output, input_emb)  # B x 1
+        else:
+            p_gen = Variable(torch.ones(batch_size, 1) * self.fix_pgen)
+            p_gen = p_gen.cuda() if use_cuda else p_gen
         extVocab_size = self.vocab_size + oov_size
-        use_cuda = p_gen.data.is_cuda
 
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
         p_gen_vocab = p_gen * p_vocab
