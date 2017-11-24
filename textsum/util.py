@@ -96,7 +96,7 @@ def group_data(data, word2idx, args):
     data: list of (docid, head, body)
     """
     # sort by input length, group inputs with close length in a batch
-    sorted_data = sorted(data, key = lambda x: len(x[2]), reverse = True)
+    sorted_data = sorted(data, key = lambda x: len(x[1]), reverse = True)
     nbatches = (len(data) + args.batch_size - 1) // args.batch_size
     return [next_batch(i, sorted_data, word2idx, args) for i in range(nbatches)]
 
@@ -105,9 +105,9 @@ def next_batch(batch_idx, data, word2idx, args):
     start = batch_idx * args.batch_size
     end = min(len(data), start + args.batch_size)
 
+    batch_data = sorted(data[start:end], key = lambda x: len(x[2]), reverse = True)
     # preprocessing should already discard empty documents
-    for i in range(start, end):
-        docid, head, body = data[i]
+    for docid, head, body in batch_data:
         inputs.append(body[:args.max_text_len])
         targets.append([word2idx[SOS]] + head[:args.max_title_len] + [word2idx[EOS]])
 
