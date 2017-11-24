@@ -29,12 +29,12 @@ def train(data):
         ts = time.time()
         random.shuffle(train_data)
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
-        s2s.train(True)
 
         for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
+            s2s.train(True)
             loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = False,
                     is_volatile = False)
@@ -72,16 +72,15 @@ def train(data):
                     is_volatile = True)
             loss_tforcing += loss.data[0]
             if args.use_copy:
-                p_gen_tforcing += mask_generation_prob(p_gen,
-                        target_lens)
+                p_gen_tforcing += mask_generation_prob(p_gen, target_lens)
+
             # scheduled sampling
             loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = True,
                     is_volatile = True)
             loss_ssampling += loss.data[0]
             if args.use_copy:
-                p_gen_ssampling += mask_generation_prob(p_gen,
-                        target_lens)
+                p_gen_ssampling += mask_generation_prob(p_gen, target_lens)
 
         print("Epoch %d, train %.2f / %.2f, val tforcing %.2f / %.2f, val ssampling %.2f / %.2f, #batch %d, %.0f sec"
                 % (ep + 1, train_loss, train_p_gen, loss_tforcing / sum_len,
