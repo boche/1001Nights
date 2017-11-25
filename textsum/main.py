@@ -157,7 +157,7 @@ def test(model_path, testset):
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--user_dir', type=str, default='/pylon5/ir3l68p/haomingc/1001Nights/')
-    argparser.add_argument('--train_data_path', type=str, default="standard_giga/train/train_data_std_v50000_keepOOV.pkl")
+    argparser.add_argument('--train_data_path', type=str, default="standard_giga/train/train_data.pkl")
     argparser.add_argument('--test_data_path', type=str, default="standard_giga/test/test_data.pkl")
     argparser.add_argument('--model_fpat', type=str, default="model/%s-%02d.model")
     argparser.add_argument('--model_path', type=str, default="model/5NSA-11.model")
