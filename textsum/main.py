@@ -173,7 +173,7 @@ if __name__ == "__main__":
     argparser.add_argument('--learning_rate', type=float, default=0.001)
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--l2', type=float, default=0.001)
-    argparser.add_argument('--fix_pgen', type=float, default=-1) # negative means not activated
+    argparser.add_argument('--fix_pgen', type=float, default=-1, help='negative means not activated')
     # argparser.add_argument('--max_norm', type=float, default=100.0)
 
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')
@@ -183,6 +183,8 @@ if __name__ == "__main__":
     argparser.add_argument('--use_copy', action='store_true', default = False)
     argparser.add_argument('--use_visualization', action='store_true', default = False)
     argparser.add_argument('--use_separate_training', action='store_true', default = False)
+    argparser.add_argument('--use_attn_oov_renorm', action='store_true', default = False, 
+                            help = 're-normalize attention weights to spread across only oov words')
 
     args = argparser.parse_args()
     check_args(args)

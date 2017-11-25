@@ -19,8 +19,9 @@ class DecoderRNN(nn.Module):
         self.use_copy = args.use_copy
         self.fix_pgen = args.fix_pgen
         self.use_separate_training = args.use_separate_training
+        self.use_attn_oov_renorm = args.use_attn_oov_renorm
 
-        self.IDX_UNK = 2   # global index for <UNK>
+        self.sp_token_idx = {'EOS':1, 'UNK':2}   # global index for special tokens
         self.emb = emb
         emb_size = self.emb.weight.size(1)
         self.out_fc = nn.Linear(self.hidden_size, self.vocab_size)
@@ -95,9 +96,23 @@ class DecoderRNN(nn.Module):
         p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) if oov_size else p_gen_vocab   # B x ExtV
 
         # compute probability to copy from source: (1 - p(gen)) * P(w)
-        p_copy_src = (1 - p_gen) * attn_weights.squeeze(1)
+        attn_weights = attn_weights.squeeze(1) # b x seq_len
+        if self.use_attn_oov_renorm:
+            attn_weights = self.renorm(attn_weights, inputs_raw)
+
+        p_copy_src = (1 - p_gen) * attn_weights
         p_extVocab.scatter_add_(1, Variable(inputs_raw), p_copy_src)
         return p_extVocab, p_gen
+
+    def renorm(self, attn_weights, inputs_raw):
+        mask = inputs_raw.clone().ge_(self.vocab_size)
+        # print('inputs_raw: ', inputs_raw.cpu().numpy())
+        # print("mask: ", mask.cpu().numpy())
+        masked_attn = attn_weights * Variable(mask.float())
+        attn_renorm = F.softmax(masked_attn)
+        # print('attn:', type(attn_weights), attn_weights.data.size())
+        # print('attn_renorm: ', type(attn_renorm), attn_renorm.cpu().data.numpy())
+        return attn_renorm
 
     def getRNNOutput(self, batch_input, h):
         input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim
@@ -141,7 +156,7 @@ class DecoderRNN(nn.Module):
             else:
                 _, batch_input = torch.max(p_logp, 1, keepdim=False)
             if self.use_copy:
-                batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
+                batch_input[batch_input >= self.vocab_size] = self.sp_token_idx['UNK']
         return batch_output, batch_p_gens
 
     def summarize(self, h, max_seq_len, encoder_output, inputs, input_lens,
@@ -170,7 +185,7 @@ class DecoderRNN(nn.Module):
             _, batch_input = torch.max(p_logp, 1, keepdim=False)
             batch_symbol.append(batch_input.clone())
             if self.use_copy:
-                batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
+                batch_input[batch_input >= self.vocab_size] = self.sp_token_idx['UNK']
 
         return batch_symbol, batch_attn, batch_p_gen
 
@@ -189,7 +204,7 @@ class DecoderRNN(nn.Module):
             partial_candidates = []
             for last_logp, (last_word, prev_words, outputs, h, last_output, prev_attns, prev_p_gens) in last_candidates:
                 # print(last_logp, last_word, prev_words)
-                if last_word.item() == 1: #EOS
+                if last_word.item() == self.sp_token_idx['EOS']: 
                     while len(final_candidates) >= beam_size and last_logp > final_candidates[0][0]:
                         heapq.heappop(final_candidates)
                     if len(final_candidates) < beam_size:
