@@ -1,6 +1,5 @@
 from heapq import heappush, heappop
 import random
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
