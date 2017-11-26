@@ -187,6 +187,8 @@ if __name__ == "__main__":
     argparser.add_argument('--use_copy', action='store_true', default = False)
     argparser.add_argument('--use_visualization', action='store_true', default = False)
 
+    argparser.add_argument('--decay_ratio', type=float, default=1.0)
+
     args = argparser.parse_args()
     check_args(args)
 
