@@ -20,6 +20,7 @@ class DecoderRNN(nn.Module):
         self.fix_pgen = args.fix_pgen
         self.use_separate_training = args.use_separate_training
         self.use_attn_oov_renorm = args.use_attn_oov_renorm
+        self.renorm_method = args.renorm_method 
 
         self.sp_token_idx = {'EOS':1, 'UNK':2}   # global index for special tokens
         self.emb = emb
@@ -60,13 +61,13 @@ class DecoderRNN(nn.Module):
         if self.use_copy:
             p_vocab = F.softmax(self.out_fc(concat_output))
             p_logp, p_gen = self.getPointerOutput(p_vocab, context,
-                    attn_weights, input_emb, rnn_output, inputs, oov_size)
+                    attn_weights, input_emb, rnn_output, inputs, input_lens, oov_size)
         else:
             p_logp = F.log_softmax(self.out_fc(concat_output))
         return p_logp, h, concat_output, attn_weights, p_gen
 
     def getPointerOutput(self, p_vocab, context, attn_weights, input_emb,
-            rnn_output, inputs_raw, oov_size):
+            rnn_output, inputs_raw, input_lens, oov_size):
         """
         p_vocab: B x V
         inputs_raw: indexed inputs without replacing oov to UNK
@@ -88,6 +89,13 @@ class DecoderRNN(nn.Module):
                 p_gen = Variable(torch.ones(batch_size, 1) * self.fix_pgen)
             p_gen = p_gen.cuda() if use_cuda else p_gen
 
+        # attention re-normalization if instance contains oov
+        attn_weights = attn_weights.squeeze(1) # b x seq_len
+        if oov_size > 0 and self.use_attn_oov_renorm:
+            attn_weights, has_no_oov = self.renorm(attn_weights, inputs_raw, input_lens)
+            p_gen, _ = torch.max(torch.cat([p_gen, has_no_oov], 1), 1, keepdim=True)
+            # print("p_gen after renorm: ", p_gen.cpu().data.numpy())
+
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
         p_gen_vocab = p_gen * p_vocab
         if oov_size > 0:
@@ -96,23 +104,30 @@ class DecoderRNN(nn.Module):
         p_extVocab = torch.cat([p_gen_vocab, p_gen_oov], 1) if oov_size else p_gen_vocab   # B x ExtV
 
         # compute probability to copy from source: (1 - p(gen)) * P(w)
-        attn_weights = attn_weights.squeeze(1) # b x seq_len
-        if self.use_attn_oov_renorm:
-            attn_weights = self.renorm(attn_weights, inputs_raw)
-
         p_copy_src = (1 - p_gen) * attn_weights
         p_extVocab.scatter_add_(1, Variable(inputs_raw), p_copy_src)
         return p_extVocab, p_gen
 
-    def renorm(self, attn_weights, inputs_raw):
-        mask = inputs_raw.clone().ge_(self.vocab_size)
-        # print('inputs_raw: ', inputs_raw.cpu().numpy())
-        # print("mask: ", mask.cpu().numpy())
-        masked_attn = attn_weights * Variable(mask.float())
-        attn_renorm = F.softmax(masked_attn)
-        # print('attn:', type(attn_weights), attn_weights.data.size())
-        # print('attn_renorm: ', type(attn_renorm), attn_renorm.cpu().data.numpy())
-        return attn_renorm
+    def renorm(self, attn_weights, inputs_raw, input_lens):
+        mask = Variable(inputs_raw >= self.vocab_size).float() 
+        masked_attn = (attn_weights * mask).add_(1e-10) # add small delta to avoid nan
+
+        if self.renorm_method == 'div':
+            # use division for re-normaliztion and get new attention weights
+            attn_renorm = masked_attn / torch.sum(masked_attn, 1).unsqueeze(1)
+        elif self.renorm_method == 'softmax':
+            # use softmax for re-normaliztion and get new attention weights
+            batch_size, max_seq_len = inputs_raw.size()
+            for b in range(batch_size):
+                if input_lens[b] < max_seq_len:
+                    masked_attn[b, input_lens[b]:] = float('-inf')
+ 
+            attn_renorm = F.softmax(masked_attn)
+            # print('attn_ori:', type(attn_weights), attn_weights.cpu().data.numpy())
+            # print('attn_renorm: ', type(attn_renorm), attn_renorm.cpu().data.numpy())
+
+        has_oov, _ = torch.max(mask, 1, keepdim=True)
+        return attn_renorm, 1 - has_oov
 
     def getRNNOutput(self, batch_input, h):
         input_emb = self.emb(batch_input).unsqueeze(1) # b x 1 x hdim

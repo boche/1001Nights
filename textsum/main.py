@@ -185,6 +185,7 @@ if __name__ == "__main__":
     argparser.add_argument('--use_separate_training', action='store_true', default = False)
     argparser.add_argument('--use_attn_oov_renorm', action='store_true', default = False, 
                             help = 're-normalize attention weights to spread across only oov words')
+    argparser.add_argument('--renorm_method', type=str, choices=['div', 'softmax'], default='div')
 
     args = argparser.parse_args()
     check_args(args)
