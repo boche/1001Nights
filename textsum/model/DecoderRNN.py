@@ -93,7 +93,7 @@ class DecoderRNN(nn.Module):
         attn_weights = attn_weights.squeeze(1) # b x seq_len
         if oov_size > 0 and self.use_attn_oov_renorm:
             attn_weights, has_no_oov = self.renorm(attn_weights, inputs_raw, input_lens)
-            p_gen, _ = torch.max(torch.cat([p_gen, has_no_oov], 1), 1, keepdim=True)
+            p_gen = torch.max(p_gen, has_no_oov)
             # print("p_gen after renorm: ", p_gen.cpu().data.numpy())
 
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
@@ -114,7 +114,7 @@ class DecoderRNN(nn.Module):
 
         if self.renorm_method == 'div':
             # use division for re-normaliztion and get new attention weights
-            attn_renorm = masked_attn / torch.sum(masked_attn, 1).unsqueeze(1)
+            attn_renorm = masked_attn / masked_attn.sum(dim=1, keepdim=True)
         elif self.renorm_method == 'softmax':
             # use softmax for re-normaliztion and get new attention weights
             batch_size, max_seq_len = inputs_raw.size()
