@@ -19,7 +19,7 @@ class DecoderRNN(nn.Module):
         self.use_copy = args.use_copy
         self.fix_pgen = args.fix_pgen
         self.use_separate_training = args.use_separate_training
-        self.use_attn_oov_renorm = args.use_attn_oov_renorm
+        self.use_renorm = args.use_renorm
         self.renorm_method = args.renorm_method 
 
         self.sp_token_idx = {'EOS':1, 'UNK':2}   # global index for special tokens
@@ -91,7 +91,7 @@ class DecoderRNN(nn.Module):
 
         # attention re-normalization if instance contains oov
         attn_weights = attn_weights.squeeze(1) # b x seq_len
-        if oov_size > 0 and self.use_attn_oov_renorm:
+        if self.use_renorm:
             attn_weights, has_no_oov = self.renorm(attn_weights, inputs_raw, input_lens)
             p_gen = torch.max(p_gen, has_no_oov)
             # print("p_gen after renorm: ", p_gen.cpu().data.numpy())
@@ -109,7 +109,7 @@ class DecoderRNN(nn.Module):
         return p_extVocab, p_gen
 
     def renorm(self, attn_weights, inputs_raw, input_lens):
-        mask = Variable(inputs_raw >= self.vocab_size).float() 
+        mask = Variable(inputs_raw >= self.vocab_size).float()
         masked_attn = (attn_weights * mask).add_(1e-10) # add small delta to avoid nan
 
         if self.renorm_method == 'div':

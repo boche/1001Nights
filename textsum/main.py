@@ -13,6 +13,7 @@ from rouge import Rouge
 
 def train(data):
     nbatch = len(data)
+    # nval = nbatch // 20
     nval = nbatch // 50
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     random.seed(15213)
@@ -31,6 +32,7 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
 
+        # for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
         for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
@@ -183,7 +185,7 @@ if __name__ == "__main__":
     argparser.add_argument('--use_copy', action='store_true', default = False)
     argparser.add_argument('--use_visualization', action='store_true', default = False)
     argparser.add_argument('--use_separate_training', action='store_true', default = False)
-    argparser.add_argument('--use_attn_oov_renorm', action='store_true', default = False, 
+    argparser.add_argument('--use_renorm', action='store_true', default = False, 
                             help = 're-normalize attention weights to spread across only oov words')
     argparser.add_argument('--renorm_method', type=str, choices=['div', 'softmax'], default='div')
 
