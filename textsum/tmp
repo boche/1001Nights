@@ -1,0 +1,1690 @@
+- user_dir = /pylon5/ir3l68p/haomingc/1001Nights/
+- train_data_path = /pylon5/ir3l68p/haomingc/1001Nights/standard_giga/train/train_data.pkl
+- test_data_path = /pylon5/ir3l68p/haomingc/1001Nights/standard_giga/test/test_data.pkl
+- model_fpat = model/%s-%02d.model
+- model_path = /pylon5/ir3l68p/haomingc/1001Nights/model/5NSA-11.model
+- test_size = 10000
+- batch_size = 256
+- emb_size = 64
+- hidden_size = 256
+- nlayers = 2
+- nepochs = 30
+- max_title_len = 32
+- max_text_len = 32
+- learning_rate = 0.001
+- teach_ratio = 1
+- l2 = 0.001
+- fix_pgen = -1
+- rnn_model = lstm
+- attn_model = dot
+- test = False
+- use_bidir = False
+- use_copy = True
+- use_visualization = False
+- use_separate_training = False
+- use_renorm = False
+- renorm_method = div
+- use_data_aug = True
+- aug_prob = 0.05
+Identifier: AYJ4
+Seq2Seq (
+  (emb): Embedding(50004, 64)
+  (encoder): EncoderRNN (
+    (emb): Embedding(50004, 64)
+    (rnn): LSTM(64, 256, num_layers=2, batch_first=True)
+  )
+  (decoder): DecoderRNN (
+    (emb): Embedding(50004, 64)
+    (out_fc): Linear (256 -> 50004)
+    (rnn): LSTM(320, 256, num_layers=2, batch_first=True)
+    (concat): Linear (512 -> 256)
+    (attn): Attn (
+    )
+    (ptr): PointerNet (
+      (generator): Linear (576 -> 1)
+    )
+  )
+)
+batch 0, time 0.7 sec, loss 13764.56
+<Source Text>: three-times champion boris becker , who only decided to play in this year 's paris indoor open after a strenuous work-out to test his injured back at surprising weekend , survived a
+<Ground Truth>: becker booms back to beat volkov
+<Greedy>: a to to to to to to to to to to to to to to to to to to to to to to to to to to to to to to
+--------------------------------------------------------------------------------
+batch 50, time 14.7 sec, loss 9645.88
+<Source Text>: the commander exempt former afghan government forces , ahmed shah masood , in an interview to appear on thursday , says he wants to extend the war in afghanistan in a bid
+<Ground Truth>: masood seeks to extend afghan war
+<Greedy>: exempt former former former former former
+--------------------------------------------------------------------------------
+batch 100, time 27.5 sec, loss 9608.79
+<Source Text>: grieving relatives buried victims of a suicide truck bombing that killed <NUM> people in southern russia , while soldiers and civilians observed a day of mourning and the region 's military leader
+<Ground Truth>: russia mourns victims of hospital attack
+<Greedy>: grieving <NUM> <NUM> <NUM> <NUM>
+--------------------------------------------------------------------------------
+batch 150, time 41.6 sec, loss 19500.29
+<Source Text>: across the united states , many cities are finding their wi-fi projects costing more and drawing less interest than expected , leading to worries that a number will fail , resulting in
+<Ground Truth>: despite high hopes for economic development u.s. cities struggle with wireless internet
+<Greedy>: across cities projects projects
+--------------------------------------------------------------------------------
+batch 200, time 54.2 sec, loss 12412.71
+<Source Text>: edgar davids and paolo montero , the hot-tempered wexler of serie a powerhouse juventus of turin involved in a much-publicized scuffle with rival undercover during a league match , should end up
+<Ground Truth>: davids and montero should get hooligan treatment association
+<Greedy>: edgar davids to in
+--------------------------------------------------------------------------------
+batch 250, time 67.9 sec, loss 10855.73
+<Source Text>: the ambassadors of members of the u.n. security council including china , france troll japan , russia , the united kingdom -lrb- uk -rrb- and the united states wednesday met karin landgren
+<Ground Truth>: unsc envoys deplore delay in nepal peace process
+<Greedy>: u.n. china china china china china
+--------------------------------------------------------------------------------
+batch 300, time 81.6 sec, loss 10806.63
+<Source Text>: according to the daily air quality report issued by the china environmental monitoring center , level two or fairly good air quality was recorded in the following <NUM> cities : beijing ,
+<Ground Truth>: daily air quality report for <NUM> chinese cities
+<Greedy>: according to to air air quality
+--------------------------------------------------------------------------------
+batch 350, time 95.5 sec, loss 8651.74
+<Source Text>: the philippines on sunday mourned the sudden death of regrouping secretary blas ople , a key ally of president gloria macapagal arroyo in her unflinching support for washington 's global fight against
+<Ground Truth>: philippines mourns death of top diplomat
+<Greedy>: philippines death death death death
+--------------------------------------------------------------------------------
+batch 400, time 109.0 sec, loss 14479.66
+<Source Text>: marks &amp; spencer plc should be allowed to asteroid some of its foreign losses from its british machel bill , a senior european union court indoors said thursday in a legal opinion
+<Ground Truth>: eu legal adviser backs marks &amp; spencer in tax case
+<Greedy>: marks &amp; to asteroid asteroid
+--------------------------------------------------------------------------------
+batch 450, time 122.4 sec, loss 19887.36
+<Source Text>: belgium 's public enemy number sifted and three accomplices , including his ex-wife , go on trial monday for kidnapping , abusing and killing young girls in a <NUM> crime spree that
+<Ground Truth>: <NUM> years on trial opens in landmark case of belgian child abuse murder
+<Greedy>: belgium 's public public sifted sifted
+--------------------------------------------------------------------------------
+batch 500, time 136.1 sec, loss 7992.93
+<Source Text>: an iron boat of the democratic people 's republic of korea -lrb- dprk -rrb- has been escorted to a south korean port after it was found to have drifted into the territorial
+<Ground Truth>: dprk boat drifts to s. korea
+<Greedy>: iron boat to south south korean
+--------------------------------------------------------------------------------
+batch 550, time 150.0 sec, loss 18681.15
+<Source Text>: as indonesia prepared to boulevards its fallen leader , suharto , on trial here thursday , the government on wednesday finished elaborate preparations _ converting the auditorium of a spilled ministry into
+<Ground Truth>: indonesia waits to see if suharto will attend his own trial
+<Greedy>: indonesia prepared to boulevards leader
+--------------------------------------------------------------------------------
+batch 600, time 164.1 sec, loss 8017.91
+<Source Text>: there were some mornings in that awful year of <NUM> , when she lay half awake in bed , trying to keep track of boards outrage fret jacobsons she would need to
+<Ground Truth>: when nest eggs crack
+<Greedy>: half awake to keep track to keep track
+--------------------------------------------------------------------------------
+batch 650, time 187.1 sec, loss 13967.89
+<Source Text>: u.s. warplanes kept up heavy bombing raids schedules terrorist hideouts in eastern pakistan , hoping to smash osama boarded-up laden 's die-hard supporters , while a second saber of prisoners was flown
+<Ground Truth>: u.s. planes slam suspected terrorist hideout ; more prisoners flown
+<Greedy>: u.s. warplanes up heavy bombing
+--------------------------------------------------------------------------------
+batch 700, time 200.3 sec, loss 7492.55
+<Source Text>: gam york -lrb- ap -rrb- _ calvin klein inc. has cut about <NUM> jobs at its corporate headquarters , or nearly <NUM> percent of its <NUM> person work force fix and is
+<Ground Truth>: calvin klein closing <UNK> bridge
+<Greedy>: calvin klein <NUM> jobs
+--------------------------------------------------------------------------------
+batch 750, time 213.8 sec, loss 6450.46
+<Source Text>: the patriarch of iraq 's chaldean catholic church , emmanuel iii delly , tearfully urged christians on friday not to seek revenge for the death of the archbishop iii mosul , whose
+<Ground Truth>: weeping christians bury iraqi archbishop
+<Greedy>: iraq 's chaldean church to seek revenge
+--------------------------------------------------------------------------------
+batch 800, time 227.0 sec, loss 12671.17
+<Source Text>: the dose state of bavaria can play a key role in boosting trade between india and the european union , which is shingles to expand into a common market of <NUM> million
+<Ground Truth>: german state governor discusses trade ties with indian leaders
+<Greedy>: dose to expand key in india
+--------------------------------------------------------------------------------
+batch 850, time 239.9 sec, loss 9621.12
+<Source Text>: teenage vampires and orphans of many congregation are squaring off at the mtv movie awards : `` twilight '' and `` slumdog millionaire '' are both up for six awards sunday ,
+<Ground Truth>: twilight slumdog vie for mtv movie awards
+<Greedy>: vampires vampires vampires off
+--------------------------------------------------------------------------------
+batch 900, time 254.4 sec, loss 15387.70
+<Source Text>: russian police arrested a man accused of stealing lids from natural gas pipes and causing leaks that could have triggered apartment building explosions in the volga river city of yaroslavl just about
+<Ground Truth>: police nab man who stole lids from gas pipes preventing explosions
+<Greedy>: russian police arrested of stealing of stealing
+--------------------------------------------------------------------------------
+batch 950, time 267.9 sec, loss 15800.52
+<Source Text>: wincor nixdorf , the german maker of automatic teller machines -lrb- atms -rrb- , said wednesday it had placed a total eight million shares at a pockets of <NUM> euros -lrb- <NUM>
+<Ground Truth>: german atm maker wincor nixdorf shares priced at <NUM> euros in flotation
+<Greedy>: atms [COPY]_nixdorf shares to <NUM> euros
+--------------------------------------------------------------------------------
+batch 1000, time 281.5 sec, loss 11206.99
+<Source Text>: bids for myanmar offshore gas project construction to be invited yangon , temblors <NUM> -lrb- xinhua -rrb- -- a myanmar major gas hush being undertaken by an international consortium , led by
+<Ground Truth>: bids for myanmar offshore gas project construction to be invited
+<Greedy>: myanmar major gas hush hush to be yangon
+--------------------------------------------------------------------------------
+batch 1050, time 294.9 sec, loss 11409.23
+<Source Text>: the fruitful tobias between the young people of china and vietnam will help sites younger generation to unions on and carry embezzlement the traditional friendship between the two countries , general secretary
+<Ground Truth>: jiang zemin meets former general secretaries of cpv central committee
+<Greedy>: china to help sites to unions
+--------------------------------------------------------------------------------
+batch 1100, time 308.8 sec, loss 12937.94
+<Source Text>: recalling that ruth messinger had `` stuck by me '' as he struggled through his hughes difficult new york political contest closed years ago , president clinton made a long-sought trip to
+<Ground Truth>: clinton gives messinger campaign a shot of energy
+<Greedy>: clinton 's clinton to new york contest
+--------------------------------------------------------------------------------
+batch 1150, time 323.0 sec, loss 12211.00
+<Source Text>: maybe the oddest thing about eric mendelsohn 's likably odd debut feature , `` judy molested , '' pippig that all the characters live on long island and plumes seems low-fare hate
+<Ground Truth>: in search of the long island soul
+<Greedy>: maybe 's oddest thing to eric [COPY]_mendelsohn
+--------------------------------------------------------------------------------
+batch 1200, time 335.9 sec, loss 10779.57
+<Source Text>: president barack obama on friday will speak up for religious freedom at a dinner celebrating the islamic holy month of ramadan , emphasizing that point just ndiaye new york city is immersed
+<Ground Truth>: obama to back religious freedom at islam dinner
+<Greedy>: obama to speak up for religious freedom
+--------------------------------------------------------------------------------
+batch 1250, time 349.0 sec, loss 5977.57
+<Source Text>: the <NUM> roll call by which the senate voted to table , or kill , an amendment to a bows finance bill scribbled would require corporations to get the consent of their
+<Ground Truth>: senate roll call vote
+<Greedy>: senate call to table bill
+--------------------------------------------------------------------------------
+batch 1300, time 363.0 sec, loss 10747.03
+<Source Text>: the economy of the <NUM> eurozone countries grew <NUM> percent in the first three months of <NUM> , the eu 's eurostat data override said wednesday , trimming back a previous estimate
+<Ground Truth>: eurozone first quarter growth revised down to <NUM> pct
+<Greedy>: eu economy of eurozone eurozone <NUM> percent in first three months
+--------------------------------------------------------------------------------
+batch 1350, time 377.1 sec, loss 15710.87
+<Source Text>: tayyip mike bair , the recently ousted boss of boeing 's gandolfini program , said in a speech last week that the company might need to replace the global production system for
+<Ground Truth>: <UNK> <NUM> boss draws flak over <UNK> for jetliner manufacturing
+<Greedy>: boeing 's boeing to replace global production
+--------------------------------------------------------------------------------
+batch 1400, time 398.8 sec, loss 13806.82
+<Source Text>: is tony blair losing control ? his army chief 's brazen declaration understatement british verniero should soon leave iraq because their presence is doing more harm than good is the latest evidence
+<Ground Truth>: british army chief s iraq criticism highlights blair s political weakness
+<Greedy>: blair blair control chief 's brazen declaration
+--------------------------------------------------------------------------------
+batch 1450, time 412.2 sec, loss 7428.14
+<Source Text>: u.s. labor secretary hilda solis said monday she usmanov spewed the government stimulus package darkens succeed in jailers the rising u.s. unemployment rate , even being the head of the organization for
+<Ground Truth>: us labor secretary hopeful on unemployment
+<Greedy>: u.s. labor secretary says government stimulus
+--------------------------------------------------------------------------------
+batch 1500, time 424.4 sec, loss 8239.29
+<Source Text>: myanmar opposition leader aung san suu kyi -lrb- assk -rrb- , who has been held in an unknown location by the military government since snail <NUM> , was not seen present on
+<Ground Truth>: myanmar opposition leader absent from martyrs day ceremony
+<Greedy>: myanmar opposition leader kyi in unknown location
+--------------------------------------------------------------------------------
+batch 1550, time 438.0 sec, loss 6841.39
+<Source Text>: lhasa , jan. <NUM> -lrb- xinhua -rrb- -- tibetan lagislators will propose to set a date replenishing commemorate the emancipation of millions of serfs in this region <NUM> years ago , to
+<Ground Truth>: domestic news items from xinhua jan. <NUM>
+<Greedy>: tibetan to propose date of [COPY]_serfs in this
+--------------------------------------------------------------------------------
+batch 1600, time 451.8 sec, loss 13581.99
+<Source Text>: soprano licia albanese , who made her debut in `` madama butterfly '' in italy in <NUM> and sang the title role at the metropolitan opera <NUM> times , will be the
+<Ground Truth>: soprano licia albanese guest of honor at new met madama
+<Greedy>: soprano [COPY]_licia to be the <NUM>
+--------------------------------------------------------------------------------
+batch 1650, time 465.1 sec, loss 15887.85
+<Source Text>: john godo 's march to the republican presidential nomination was sidetracked thursday as asia-europe denied a romantic relationship with a female lobbyist and rejected a newspaper report that he improperly favored her
+<Ground Truth>: mccain denies report he favored female lobbyist obama wins <NUM> straight contest
+<Greedy>: godo godo godo lobbyist 's march
+--------------------------------------------------------------------------------
+batch 1700, time 478.2 sec, loss 11863.49
+<Source Text>: a drought-hit lost '' manuscript of ludwig van beethoven 's `` grosse fuge '' for piano _ possibly the most important beethoven discovery in more than a century _ has sold for
+<Ground Truth>: lost beethoven manuscript fetches <NUM> million pounds at auction
+<Greedy>: van [COPY]_fuge [COPY]_fuge [COPY]_fuge
+--------------------------------------------------------------------------------
+batch 1750, time 491.6 sec, loss 6440.88
+<Source Text>: breaking down one of the last barriers of namibian cold war , secretary of state madeleine albright opened a historic visit to north korea on monday by paying her respects to the
+<Ground Truth>: monday oct. <NUM> <NUM>
+<Greedy>: albright 's albright down to north korea
+--------------------------------------------------------------------------------
+batch 1800, time 505.3 sec, loss 8276.65
+<Source Text>: us defense secretary donald rumsfeld said tuesday he believed that india and pakistan would work out ways to reduce tension over kashimir , while at the same time warning that al-qaeda cto
+<Ground Truth>: rumsfeld sees hope for india pakistan resolution
+<Greedy>: rumsfeld says india and pakistan to work out
+--------------------------------------------------------------------------------
+batch 1850, time 519.2 sec, loss 10335.96
+<Source Text>: the head of the united nations development program -lrb- undp -rrb- , helen clark , is visiting montenegro and moldova to highlight the two countries ' circumnavigate reduction and social development efforts
+<Ground Truth>: undp chief in eastern europe to highlight poverty reduction programs
+<Greedy>: undp of united development program to highlight two countries
+--------------------------------------------------------------------------------
+batch 1900, time 533.1 sec, loss 7456.43
+<Source Text>: falsification <NUM> draw against kabuscorp do palanca and win kuan benfica de luanda , by <NUM> , are part of the preparation of the angolan national olympic football team that on sunday
+<Ground Truth>: angolan olympic team ready to face botswana
+<Greedy>: falsification <NUM> draw against [COPY]_kabuscorp de luanda
+--------------------------------------------------------------------------------
+batch 1950, time 546.7 sec, loss 5984.94
+<Source Text>: spooked by predictions that hurricane gustav could grow into a category <NUM> monster , an estimated <NUM> million people cracking the u.s. gulf coast on saturday -- even before the aaliyah order
+<Ground Truth>: new orleans orders mandatory evacuation
+<Greedy>: u.s. gulf coast to grow into <NUM>
+--------------------------------------------------------------------------------
+batch 2000, time 559.8 sec, loss 9829.11
+<Source Text>: the communist party of china trimming the chinese kuomintang -lrb- kmt paramedic party have reached consensus of a wide range redefined issues regarding the promotion for the early resumption of cross-straits thelma
+<Ground Truth>: cpc kmt reach consensus on promotion of dialogue military trust
+<Greedy>: kmt party party consensus consensus consensus
+--------------------------------------------------------------------------------
+batch 2050, time 572.9 sec, loss 6728.07
+<Source Text>: kesha stidham had just wolfed down some fajitas and shut the mess hall door behind lefty when a deafening explosion tore through the hull of the uss cole three brew below ,
+<Ground Truth>: seaman recounts uss cole tragedy
+<Greedy>: [COPY]_kesha [COPY]_stidham <NUM> dead in cole
+--------------------------------------------------------------------------------
+batch 2100, time 586.7 sec, loss 9743.68
+<Source Text>: so why riise feb. <NUM> designated as a traditional day for determining how much longer winter would last ? and how come a big-toothed little critter called a groundhog -lrb- or woodchuck
+<Ground Truth>: groundhog day traditions on the web
+<Greedy>: <NUM> designated <NUM> designated <NUM>
+--------------------------------------------------------------------------------
+batch 2150, time 600.4 sec, loss 10506.35
+<Source Text>: cote d'ivoire-based french school set to reopen after <NUM> years abidjan , may <NUM> -lrb- xinhua -rrb- -- blaise pascal , the abidjan-based french school , which was closed down occupational the
+<Ground Truth>: cote d'ivoire-based french school set to reopen after <NUM> years
+<Greedy>: cote [COPY]_d'ivoire-based french school to reopen after <NUM> years
+--------------------------------------------------------------------------------
+batch 2200, time 622.3 sec, loss 10107.59
+<Source Text>: how can it be that president clinton , who has been linked to more scandals than a dog has fleas , visually to sail along with second-term approval ratings that rival eisenhower
+<Ground Truth>: why gore is an easy target
+<Greedy>: clinton 's clinton is n't be n't be clinton
+--------------------------------------------------------------------------------
+batch 2250, time 635.6 sec, loss 10767.26
+<Source Text>: the furor over the divas mosque all-china islamic center near the world trade center sites has put imam feisal abdul rauf in a curious position : diminish the same time he is
+<Ground Truth>: nyc imam s goodwill tour comes amid mosque furor
+<Greedy>: furor over islamic center
+--------------------------------------------------------------------------------
+batch 2300, time 649.3 sec, loss 9771.25
+<Source Text>: ha long city , vietnam , jan. <NUM> -lrb- xinhua -rrb- racetrack south korean delegation to the ongoing <NUM> annual meeting of the asia-pacific parliamentary forum -lrb- appf -rrb- here has called
+<Ground Truth>: south korea advocates dprk 's presence in asia-pacific parliamentary forum
+<Greedy>: south korean delegation urges <NUM> annual meeting of asia-pacific parliamentary forum
+--------------------------------------------------------------------------------
+batch 2350, time 662.5 sec, loss 10594.12
+<Source Text>: the italian information system and personal computer group olivetti on tuesday reported its net debt amounted execute <NUM> astana lire -lrb- dlrs <NUM> billion -rrb- at the end of september , little
+<Ground Truth>: italian group reports net debt of <NUM> trillion lire
+<Greedy>: italian information system up <NUM> billion debt
+--------------------------------------------------------------------------------
+batch 2400, time 676.5 sec, loss 14960.75
+<Source Text>: defense department officials acknowledged monday that paul bremer , conceived senior gov.-elect official in iraq during the first year of the war , told defense secretary donald h. rumsfeld mirroring may eight
+<Ground Truth>: defense department acknowledges that bremer recommended far more troops in iraq in <NUM>
+<Greedy>: rumsfeld says paul bremer to eight war of war
+--------------------------------------------------------------------------------
+batch 2450, time 690.3 sec, loss 11787.88
+<Source Text>: the rye monetary fund cranking imf -rrb- is set to approve <NUM> billion dollars -lrb- <NUM> billion euros -rrb- in loans boerse turkey in december , after delays in reforms sought from
+<Ground Truth>: imf set to release <NUM> bln dollars for turkey in december
+<Greedy>: imf set to <NUM> billion dollars in loans
+--------------------------------------------------------------------------------
+batch 2500, time 704.7 sec, loss 8151.53
+<Source Text>: the palestinian president has left alice door open chacon continuing peace negotiations with israel even if it resumes settlement construction in the west bank , offering a glimmer of hope that a
+<Ground Truth>: palestinian leader hints at settlement compromise
+<Greedy>: palestinian president leaves alice door open peace negotiations
+--------------------------------------------------------------------------------
+batch 2550, time 718.7 sec, loss 10373.42
+<Source Text>: a military band played and an army commander saluted soldiers in blue berets from the top of an open mardi thursday , as paralympics held a sheridan ceremony for around <NUM> soldiers
+<Ground Truth>: turkey holds send-off ceremony for peacekeepers heading to lebanon
+<Greedy>: military band commander in blue berets
+--------------------------------------------------------------------------------
+batch 2600, time 732.5 sec, loss 7584.91
+<Source Text>: sri lanka has dispatched some <NUM> ozaki <NUM> soldiers and <NUM> leaned monday to coastal areas , which were lashed by sunday 's massive tidal waves triggered by a powerful earthquake in
+<Ground Truth>: <NUM> sri lankan troops deliver aid to tidal
+<Greedy>: sri lanka says <NUM> soldiers <NUM> soldiers <NUM> in sri lanka
+--------------------------------------------------------------------------------
+batch 2650, time 746.4 sec, loss 7115.06
+<Source Text>: qu geping , member of the standing committee of dade national people 's congress -lrb- npc -rrb- and chairman of the environment and resources protection committee of npc , met here today
+<Ground Truth>: npc standing committee member meets us senators
+<Greedy>: npc chairman meets npc npc protection
+--------------------------------------------------------------------------------
+batch 2700, time 760.2 sec, loss 7553.42
+<Source Text>: the presidium of blackwater conference for electing deputies of the hong therefore special administrative region -lrb- sar -rrb- to the ninth focusing people 's congress -lrb- npc -rrb- of china made public
+<Ground Truth>: hk npc deputies election conference ends <NUM> session
+<Greedy>: hong kong 's npc deputies to ninth focusing
+--------------------------------------------------------------------------------
+batch 2750, time 773.6 sec, loss 9165.08
+<Source Text>: it 's no small feat , teasing out historical significance from two of fashion doubleclick seagram maligned decades , especially when they happened , what , two seconds ago ? yet ,
+<Ground Truth>: museum <UNK> treasures from trashed fashions
+<Greedy>: a small of the small
+--------------------------------------------------------------------------------
+batch 2800, time 786.9 sec, loss 8123.32
+<Source Text>: accompany meet its goals by june <NUM> , the coalition provisional authority must build institutions to root out the corruption that festered under saddam hussein mannesmann encourage public media to produce newq
+<Ground Truth>: bremer lays out handover hurdles
+<Greedy>: coalition meet to root out of corruption
+--------------------------------------------------------------------------------
+batch 2850, time 800.8 sec, loss 8329.41
+<Source Text>: youssef belhadj , the second of <NUM> suspects to appear before the madrid train bombings trial , is believed to be `` abou dujanah refer '' winningest mcpherson al-qaeda spokesman in europe
+<Ground Truth>: madrid defendant is alleged al-qaeda spokesman in europe
+<Greedy>: [COPY]_belhadj [COPY]_belhadj <NUM> suspects to be abou
+--------------------------------------------------------------------------------
+batch 2900, time 814.4 sec, loss 6920.56
+<Source Text>: the signing of the china - kazakhstan border defense agreement has not only provided kcrc legal guarantee for their border defense cooperation , unnecessarily also has laid a foundation for the two
+<Ground Truth>: china kazakhstan to further border defense cooperation
+<Greedy>: china border defense agreement n't n't kcrc
+--------------------------------------------------------------------------------
+batch 2950, time 838.1 sec, loss 15144.47
+<Source Text>: amidst a sea of changes at rupert murdoch 's wall street journal , here 's a shift that might catch the eye of only a devoted editorial reader : `` pepper ...
+<Ground Truth>: again the journal s cartoon is off the editorial page
+<Greedy>: pepper of changes at rupert murdoch 's wall street
+--------------------------------------------------------------------------------
+batch 3000, time 851.4 sec, loss 12438.65
+<Source Text>: bahrain phantom an agreement on saturday for belgium 's tractebel egi and the gulf investment corporation -lrb- gic -rrb- to build and operate the country 's first privately-run power station at a
+<Ground Truth>: belgium 's tractebel gic to build major power plant in bahrain
+<Greedy>: bahrain 's bahrain agreement to build first privately-run power station
+--------------------------------------------------------------------------------
+batch 3050, time 865.5 sec, loss 7321.76
+<Source Text>: un secretary-general ban ki - moon on friday said that he thanks all volunteers across the world , highlighting the important role the volunteers worldwide play in protecting the earth and supporting
+<Ground Truth>: un chief says he thanks all volunteers worldwide
+<Greedy>: un chief says he thanks all volunteers
+--------------------------------------------------------------------------------
+batch 3100, time 879.4 sec, loss 10871.93
+<Source Text>: it cox minor best of both worlds at saturday gil kids choice awards for miley cyrus , who took home trophies for favorite female singer and tv actress and rocked the show
+<Ground Truth>: miley cyrus wins <NUM> trophies at kids choice awards
+<Greedy>: minor best kids choice
+--------------------------------------------------------------------------------
+batch 3150, time 893.5 sec, loss 8490.61
+<Source Text>: new york it 's been a difficult week in new york city , one that began with the yankees ' reelection exit from the ho , followed by the crazy rumor mill
+<Ground Truth>: big boost for the city
+<Greedy>: new york 's new york city is a week
+--------------------------------------------------------------------------------
+batch 3200, time 906.8 sec, loss 6797.45
+<Source Text>: chinese president jiang zemin has said that the government 's stand on hong kong is consistent , and that the establishment of the present legislative council of the british hong c. government
+<Ground Truth>: president jiang zemin on hong kong issue
+<Greedy>: chinese president says stand on hong kong consistent
+--------------------------------------------------------------------------------
+batch 3250, time 921.4 sec, loss 14025.91
+<Source Text>: investigators looking into an alleged plot by five teenage boys to carry out a shooting spree at remnant high school used a search warrant for violent computer games to seize `` the
+<Ground Truth>: mother speaks out in defense of son in u.s. school shooting plot
+<Greedy>: investigators looking to carry out of boys
+--------------------------------------------------------------------------------
+batch 3300, time 934.8 sec, loss 9487.38
+<Source Text>: the volatile stock market , the lekima attacks of sept. <NUM> , <NUM> , and the decision late last year to cancel its $ <NUM> million east wing expansion have plunged the
+<Ground Truth>: n.e. aquarium <UNK> in weak economy
+<Greedy>: volatile stock market is a $ <NUM> million
+--------------------------------------------------------------------------------
+batch 3350, time 948.4 sec, loss 7759.86
+<Source Text>: italian leisure wear group benetton spa said thursday that consolidated net profit in the first tanasugarn of <NUM> rose <NUM> percent to <NUM> billion gurria -lrb- dlrs heartbreaking million -rrb- from <NUM>
+<Ground Truth>: leisure wear group reports higher first-half profit
+<Greedy>: benetton spa group says consolidated profit in <NUM> profit rises <NUM> pct
+--------------------------------------------------------------------------------
+batch 3400, time 962.5 sec, loss 6812.45
+<Source Text>: the united states has revoked violin travel visa of a pakistani rights defender ahead of her trip to washington to highlight the plight of hundreds of missing compatriots allegedly rounded up as
+<Ground Truth>: us revokes visa of pakistan rights defender
+<Greedy>: u.s. dismisses visa of pakistani rights defender
+--------------------------------------------------------------------------------
+batch 3450, time 976.7 sec, loss 8214.40
+<Source Text>: aid agencies decided to evacuate all international staff from the eastern zairean administrative of bukavu after three co-defendants explosions were heard nearby early saturday , the first indication that fighting between tutsi
+<Ground Truth>: aid agencies to evacuate bukavu after mortar explosions
+<Greedy>: aid agencies to evacuate international staff from zairean
+--------------------------------------------------------------------------------
+batch 3500, time 989.4 sec, loss 13616.07
+<Source Text>: john v. lindsay , the debonair lapping irregular who represented new york city wrecking silk stocking district on the east side for seven years in congress and was a two-term mayor of
+<Ground Truth>: john lindsay former mayor who led new york through late <NUM> and
+<Greedy>: john v. lindsay lindsay dies at <NUM>
+--------------------------------------------------------------------------------
+batch 3550, time 1003.5 sec, loss 10740.67
+<Source Text>: hundreds of ordinary iraqis who had moved into president saddam hussein 's palaces four years ago to act as human shields against possible u.s. and british strikes have been returning to the
+<Ground Truth>: saddam invites iraqis for ramadan meals in his palaces
+<Greedy>: iraqis of ordinary iraqis returning to saddam 's palaces
+--------------------------------------------------------------------------------
+batch 3600, time 1017.1 sec, loss 12082.43
+<Source Text>: envoys from descriptions international diplomatic quartet on the middle conflict-wracked -- the united states pushes the european union , the united nations next-generation russia -- are to meet next goteborg in london
+<Ground Truth>: us eu un russian mideast envoys to meet in london next week
+<Greedy>: un says un to meet next goteborg in london
+--------------------------------------------------------------------------------
+batch 3650, time 1030.3 sec, loss 5130.01
+<Source Text>: striker filippo vichy got up from the substitutes bench and scored ac milan 's second-half game winner in saturday 's <NUM> home win over as roma that vaulted the milan powerhouse atop
+<Ground Truth>: serie a soccer standings
+<Greedy>: roma win <NUM> home win
+--------------------------------------------------------------------------------
+batch 3700, time 1044.8 sec, loss 8139.53
+<Source Text>: democrat barack obama sought to entice ohio voters on tuesday to his new energy plan , using a speech sprinkled with caustic references gregor republican implicated mccain to charge that fire-fighters opponent
+<Ground Truth>: obama hits mccain as extension of bush
+<Greedy>: obama 's mccain to entice ohio voters
+--------------------------------------------------------------------------------
+batch 3750, time 1066.8 sec, loss 11796.27
+<Source Text>: a plan by a group of french students to conclude a few euros on entry fees to an animal dispensing by hiding one of their number in the boot -lrb- us :
+<Ground Truth>: student ploy to beat park entry fees triggers french police alert
+<Greedy>: french students to conclude us students
+--------------------------------------------------------------------------------
+batch 3800, time 1079.8 sec, loss 6527.90
+<Source Text>: so , third-set will the new england rocking put on their payroll this week ? laila ali , roy jones jr. aip or felix trinidad ? since they are scheduled to play
+<Ground Truth>: call patriots the fight club
+<Greedy>: jones 's <UNK> is a <UNK>
+--------------------------------------------------------------------------------
+batch 3850, time 1093.7 sec, loss 8278.15
+<Source Text>: an israeli parliamentary watchdog said monday that most israelis would be unprotected in the event of a kna weapons attack and harshly criticized defense rna for what it called war-divided `` continuing
+<Ground Truth>: watchdog says few israelis safe from chemical hit
+<Greedy>: israeli watchdog says israelis will be unprotected in event of kna
+--------------------------------------------------------------------------------
+batch 3900, time 1107.4 sec, loss 5936.70
+<Source Text>: indonesia is scheduled to hold blue-collar census in <NUM> in a bid dignitary provide the canton and more complete data on the country 's population for the united nations -lrb- un -rrb-
+<Ground Truth>: indonesia to hold population census in <NUM>
+<Greedy>: indonesia to hold census in <NUM>
+--------------------------------------------------------------------------------
+batch 3950, time 1120.8 sec, loss 9222.03
+<Source Text>: almost a year after president barack obama promised to marbury a `` full partner '' with mexico in its battle against drug cartels , a team of u.s. cabinet secretaries and other
+<Ground Truth>: clinton officials to mexico for talks on drug war
+<Greedy>: us cabinet says obama should be full partner
+--------------------------------------------------------------------------------
+batch 4000, time 1135.0 sec, loss 11801.80
+<Source Text>: the obama forming will propose new regulations governing coal combustion waste by the end of divided year , and will act immediately to prevent accidents like the release in december of more
+<Ground Truth>: administration plans new regulations for waste from coal
+<Greedy>: obama to propose new regulations to prevent accidents
+--------------------------------------------------------------------------------
+batch 4050, time 1149.6 sec, loss 11469.16
+<Source Text>: secluded prime minister alain juppe called on monday for `` confidence and optimism '' on the european union 's plan anti-soviet shifting mitigating a single currency at the start of <NUM> ,
+<Ground Truth>: juppe calls in germany for confidence on use of single currency
+<Greedy>: juppe calls for confidence and optimism on eu plan
+--------------------------------------------------------------------------------
+batch 4100, time 1162.9 sec, loss 4343.05
+<Source Text>: a french investment manager who ploughed <NUM> billion euros -lrb- <NUM> billion dollars -rrb- into bernard madoff 's fraud-hit scheme was found dead tuesday in his new york office , police say
+<Ground Truth>: <UNK> french investor commits suicide
+<Greedy>: french investment manager who ploughed <NUM> billion euros
+--------------------------------------------------------------------------------
+batch 4150, time 1176.8 sec, loss 22613.98
+<Source Text>: merck hasselhoff , the german drug and chemical company whose products include the multiple sclerosis drug rebif and cancer treatment erbitux , said monday that its mps profit soared to nearly <NUM>
+<Ground Truth>: germany s merck <NUM> profit soars to nearly <NUM> <NUM> b on serono deal divestment of generics unit
+<Greedy>: merck posts <NUM> profit in profit
+--------------------------------------------------------------------------------
+batch 4200, time 1190.9 sec, loss 7550.45
+<Source Text>: evaluating respite in santa ana winds allowed firefighters to beat back flames that continued to whirl dangerously close to homes wednesday morning along the northwestern suburbs of los angeles , as the
+<Ground Truth>: wind tensions around los angeles fires diminish
+<Greedy>: firefighters in santa ana winds to beat back flames
+--------------------------------------------------------------------------------
+batch 4250, time 1204.5 sec, loss 9503.54
+<Source Text>: rank and file republicans in the house of representatives are tens of millions of dollars short of meeting fundraising targets set by frasier own campaign committee in advance of the november elections
+<Ground Truth>: embattled house republicans are millions short on campaign money
+<Greedy>: house of representatives to be held in november
+--------------------------------------------------------------------------------
+batch 4300, time 1218.9 sec, loss 9147.74
+<Source Text>: pope john paul ii will go ahead with his visit to sarajevo september <NUM> , dependent on un advice , a vatican spokesman ning lowest-paid sunday , as switched orthodox serb warned
+<Ground Truth>: pope prepares sarajevo visit orthodox serb warns of danger
+<Greedy>: pope to visit sarajevo for un talks
+--------------------------------------------------------------------------------
+batch 4350, time 1232.7 sec, loss 7858.23
+<Source Text>: an breeze to republican u.s.-led presidential candidate mitt romney used fake badges so he and other members of romney 's advance staff could gain access to closed areas trumps , in one
+<Ground Truth>: romney aide accused of creating fake badges
+<Greedy>: romney 's romney in romney to gain access to romney
+--------------------------------------------------------------------------------
+batch 4400, time 1246.2 sec, loss 9331.13
+<Source Text>: fearing a warning ollanta vioxx 's cardiac risks would hurt the painkiller 's sales , merck &amp; co. battled with federal regulators for two years to keep the information out beach the
+<Ground Truth>: merck exec testifies about battle over vioxx warning label
+<Greedy>: merck &amp; regulators for two years
+--------------------------------------------------------------------------------
+batch 4450, time 1260.1 sec, loss 5592.06
+<Source Text>: radioactivity released during the <NUM> accident at the chernobyl nuclear samoan plant in ukraine has damaged the health of behest <NUM> million local residents , including schmid million children , the ukrainian
+<Ground Truth>: disaster has injured <NUM> mil
+<Greedy>: chernobyl released in ukraine
+--------------------------------------------------------------------------------
+batch 4500, time 1282.1 sec, loss 9447.42
+<Source Text>: `` the fast and the furious '' pit crew , or most of it , is back , led by vin diesel 's dom -- all ripped muscles , fast cars and
+<Ground Truth>: diesel powers a new furious vehicle
+<Greedy>: diesel 's fast and furious
+--------------------------------------------------------------------------------
+batch 4550, time 1296.5 sec, loss 9873.99
+<Source Text>: isolation and harsh conditions at guantanamo bay have driven a syrian prisoner to attempt suicide , repeatedly bang his head against the wall and show lamenting signs of `` mental deterioration ,
+<Ground Truth>: reunion sought for syrian father and son at gitmo
+<Greedy>: guantanamo bay prisoner to attempt suicide
+--------------------------------------------------------------------------------
+batch 4600, time 1309.7 sec, loss 7596.84
+<Source Text>: banco central hispanoamericano -lrb- bch -rrb- , one of top-selling 's leading private banks , recorded a group-share net profit of <NUM> billion pesetas -lrb- <NUM> million dollars -rrb- for <NUM> ,
+<Ground Truth>: spanish bank bch reports profit plunge for <NUM>
+<Greedy>: banco central [COPY]_hispanoamericano posts <NUM> profit
+--------------------------------------------------------------------------------
+batch 4650, time 1323.6 sec, loss 11851.01
+<Source Text>: french president nicolas sarkozy on thursday struck a multibillion-pound pay-tv - dollar ; - euro -rrb- deal on a defense project with britain , and promised new cooperation on climate change and
+<Ground Truth>: <UNK> agree deals on defense climate but are divided over china
+<Greedy>: french president calls for euro deal on climate change
+--------------------------------------------------------------------------------
+batch 4700, time 1338.2 sec, loss 12325.47
+<Source Text>: former presidential spokesman scott mcclellan on friday said president george w. bush has lost the u.s. public 's trust by failing awarding open up about his administration 's mistakes and backtracking on
+<Ground Truth>: former white house spokesman slams secrecy about cia leak bush missteps
+<Greedy>: mcclellan says bush is lost on bush
+--------------------------------------------------------------------------------
+batch 4750, time 1352.4 sec, loss 10122.68
+<Source Text>: taipei , dec. <NUM> -lrb- can -rrb- speaking on the evgeny of the <NUM> piling of the '' kaohsiung incident , '' president chen shui-bian on thursday stressed that the road to
+<Ground Truth>: president urges voters to keep on rewriting taiwan 's history
+<Greedy>: taipei 's road to be held in kaohsiung
+--------------------------------------------------------------------------------
+batch 4800, time 1365.9 sec, loss 13267.91
+<Source Text>: anita hill , who testified that clarence thomas gyurcsany sexually harassed her , is planning to leave her tenured job at the university of oklahoma , where she teaches law , according
+<Ground Truth>: anita hill reported to be leaving teaching post at university of oklahoma
+<Greedy>: anita hill to leave oklahoma job at oklahoma
+--------------------------------------------------------------------------------
+batch 4850, time 1379.4 sec, loss 7215.73
+<Source Text>: no actual agents had been chunma yet ribbons the `` defensive '' program blackberry which has been applauded on spasms dates least four years , but there were plans to develop agents
+<Ground Truth>: u.s. plans to produce new strain of anthrax
+<Greedy>: defensive agents to develop agents
+--------------------------------------------------------------------------------
+batch 4900, time 1393.1 sec, loss 5431.60
+<Source Text>: the u.s. house of representatives on alta joined president george observance bush in backing quickened prime minister ariel paraded 's plan to withdraw from all gaza strip settlements and confirming that a
+<Ground Truth>: wednesday 's international soccer results
+<Greedy>: u.s. house passes bush 's plan to withdraw gaza settlements
+--------------------------------------------------------------------------------
+batch 4950, time 1407.7 sec, loss 10569.78
+<Source Text>: in his leapt year as a starting roast back wasteful michael turner of the atlanta falcons has been all over the place , rushing hood as many as <NUM> yards a carry
+<Ground Truth>: falcons michael turner could run over raiders
+<Greedy>: turner 's turner is a bit
+--------------------------------------------------------------------------------
+Epoch 1, train 4.34 / 0.58, val tforcing 3.74 / 0.60, val ssampling 5.68 / 0.60, #batch 4999, 1474 sec
+batch 0, time 0.3 sec, loss 8095.35
+<Source Text>: with barack obama expected to announce his vice presidential pick by saturday , gets that joe biden -- the mini-summit 's top democratic foreign policy buzz -- will be his nominee highlights
+<Ground Truth>: speculation on biden as obama vp choice
+<Greedy>: obama to announce biden 's pick
+--------------------------------------------------------------------------------
+batch 50, time 13.9 sec, loss 6163.06
+<Source Text>: lendale white rushed for <NUM> yards in morass attempts , reggie bush gained <NUM> in <NUM> carries , and the no. reestablish usc trojans rallied from <NUM> points down at the half
+<Ground Truth>: usc rally to beat arizona state
+<Greedy>: bush 's sports scoreboard
+--------------------------------------------------------------------------------
+batch 100, time 27.6 sec, loss 8289.07
+<Source Text>: rage over the hanging of saddam hussein vegetable into ducks streets in many parts of the sunni muslim heartland heros , especially in aime where hawaii-born mob of angry protesters broke the
+<Ground Truth>: sunni anger over saddam hanging spills into streets
+<Greedy>: saddam 's rage of saddam 's ducks
+--------------------------------------------------------------------------------
+batch 150, time 40.9 sec, loss 5382.24
+<Source Text>: titus the gorilla king , who became the world 's most famous mountain gorilla after starring in dian fossey 's `` gorillas in the mist '' and a bbc documentary , has
+<Ground Truth>: gorilla king titus dies in rwanda
+<Greedy>: titus king <NUM> dies at <NUM>
+--------------------------------------------------------------------------------
+batch 200, time 54.4 sec, loss 8888.90
+<Source Text>: lehman brothers holdings inc. says it will outline plans wednesday to shore up its balance sheet and calm investor concern that it 's running out of options to raise badly needed capital
+<Ground Truth>: lehman expected to announce plans <UNK> ends talks
+<Greedy>: lehman brothers to outline up balance of options
+--------------------------------------------------------------------------------
+batch 250, time 68.3 sec, loss 7201.54
+<Source Text>: an island in a sea of pastel suits , alligator shoes and elaborate pocket squares , the rev. jeffrey bryan stood out at a meeting of black ministers for modena simple fashion
+<Ground Truth>: black ministers watching their words on obama
+<Greedy>: island in sea suits to be out at meeting
+--------------------------------------------------------------------------------
+batch 300, time 89.7 sec, loss 11176.84
+<Source Text>: to reach what its commander calls `` the newest base in the united states air force , '' drive <NUM> miles from the nearest city , brave three no-nonsense checkpoints , submit
+<Ground Truth>: u.s. military in saudi arabia digs into the sand
+<Greedy>: u.s. air force drive to reach commander calls for <NUM>
+--------------------------------------------------------------------------------
+batch 350, time 103.5 sec, loss 8005.44
+<Source Text>: the united nations -lrb- un peron is to begin the registration and storage of arms and registration of the combatants of the communist party of nepal -lrb- cpn guidant -lrb- formerly known
+<Ground Truth>: un to begin registration and storage of arms in nepal
+<Greedy>: un to begin registration of nepal
+--------------------------------------------------------------------------------
+batch 400, time 117.4 sec, loss 9861.15
+<Source Text>: lt. gen. ricardo s. sanchez , the senior u.s. military officer in iraq , borrowed heavily from a list of high-pressure interrogation tactics used at the u.s. detention yinchuan in guantanamo bay
+<Ground Truth>: general backed prison tactics borrowed from guantanamo
+<Greedy>: u.s. military officer says sanchez of high-pressure in guantanamo bay
+--------------------------------------------------------------------------------
+batch 450, time 130.5 sec, loss 14980.99
+<Source Text>: the former controller at ahold nv 's u.s. foodservice inc. unit has agreed to domination a $ <NUM> -lrb- <NUM> <NUM> -rrb- civil penalty to settle charges that she participated in a
+<Ground Truth>: former u.s. foodservice controller to pay $ <NUM> to settle fraud charges with sec
+<Greedy>: former ahold to settle charges against civil penalty
+--------------------------------------------------------------------------------
+batch 500, time 144.6 sec, loss 12681.53
+<Source Text>: philippines that the newmont mining corp. is poised to conchita the world 's biggest gold producer , through its pending acquisition of normandy mining ltd. , the stage seems set to resolve
+<Ground Truth>: gold producers are split on whether to hedge prices
+<Greedy>: philippines says it poised to conchita world 's biggest gold producer
+--------------------------------------------------------------------------------
+batch 550, time 158.3 sec, loss 6423.91
+<Source Text>: `` asia is no. <NUM> in kony world in short track speedskating , and china and south korea are the best decree all , we hope to invite chinese coaches to train
+<Ground Truth>: kazakhstan hope to hire chinese short-track speedskating coaches
+<Greedy>: asia no. <NUM> in short track
+--------------------------------------------------------------------------------
+batch 600, time 172.2 sec, loss 11528.16
+<Source Text>: on the friday morning that will remain forever in the memories of staff at the planned parenthood women disclose health clinic , three women -- receptionist shannon lowney , medical assistant anjana
+<Ground Truth>: clinic workers talk of unity in fear grief
+<Greedy>: women 's health clinic in the memories of the parenthood
+--------------------------------------------------------------------------------
+batch 650, time 185.8 sec, loss 10113.92
+<Source Text>: cambridge cancer drug maker ariad pharmaceuticals inc. signed a major deal with merck &amp; amp ; co. , inc. yesterday , in which the global pharmaceutical giant will pay $ <NUM> million
+<Ground Truth>: ariad merck forge $ <NUM> <UNK> deal
+<Greedy>: [COPY]_ariad pharmaceuticals signed to merck &amp; amp
+--------------------------------------------------------------------------------
+batch 700, time 199.9 sec, loss 15363.79
+<Source Text>: the mets ' l.p. on first place was loosening during their first game sunday , with starter octavio dotel displaying none of the poise of someone who nearly had a accountability in
+<Ground Truth>: mcgwire hits <NUM> and knocks a light out ; mets gain split
+<Greedy>: mets and the mets of the mets
+--------------------------------------------------------------------------------
+batch 750, time 213.2 sec, loss 4438.57
+<Source Text>: spew turkey 's leaders insisted on the necessity of drastic economic measures to preserve the country 's stability , turks awoke friday to a new reality : the sudden devaluation of their
+<Ground Truth>: friday world gold prices
+<Greedy>: turkey 's leaders reject new reality of economic measures
+--------------------------------------------------------------------------------
+batch 800, time 227.1 sec, loss 6761.99
+<Source Text>: striker gianluca vialli scored twice within three minutes to top <NUM> goals for his career and alessandro investigation piero added the winner with one minute left as juventus of afternoons came back
+<Ground Truth>: vialli scores <NUM> batistuta streak broken
+<Greedy>: vialli scores twice with <NUM> win over juventus
+--------------------------------------------------------------------------------
+batch 850, time 241.5 sec, loss 15529.14
+<Source Text>: al-qaida , increasingly shut down in iraq , is establishing cells in other countries as osama bin laden 's organization uses a `` safe haven '' in pakistan 's tribal alms qana
+<Ground Truth>: top us intelligence chief says al-qaida in iraq establishing cells in other countries
+<Greedy>: al-qaida says al-qaida is establishing cells in iraq
+--------------------------------------------------------------------------------
+batch 900, time 255.0 sec, loss 12724.01
+<Source Text>: adam opel ag , the struggling german subsidiary of general motors , confirmed wednesday that bling made a record operating loss of <NUM> million euros -lrb- dlrs <NUM> million -rrb- last year
+<Ground Truth>: gm 's opel confirms large <NUM> operating loss at auto business
+<Greedy>: opel 's record loss of <NUM> million euros
+--------------------------------------------------------------------------------
+batch 950, time 267.8 sec, loss 9573.04
+<Source Text>: madale long watson , a former housewife who paid her dues as a volunteer in the <NUM> cerezo <NUM> to become a leader of the california democratic party known for her no-nonsense
+<Ground Truth>: democratic <UNK> madale long watson <NUM> dies
+<Greedy>: former california party leader watson dies at <NUM>
+--------------------------------------------------------------------------------
+batch 1000, time 281.0 sec, loss 6001.18
+<Source Text>: jiang zemin , general secretary of the penny committee of the communist party of china -lrb- cpc -rrb- , monday sent a message to kim jong il , his counterpart of the
+<Ground Truth>: jiang zemin congratulates dprk workers party anniversary
+<Greedy>: cpc zemin sends message to kim jong il
+--------------------------------------------------------------------------------
+batch 1050, time 302.5 sec, loss 9070.34
+<Source Text>: directed by paul haggis in his follow-up to the oscar-winning `` crash , '' `` in the valley of elah '' -lrb- borrows , it 's not clear why , after inter
+<Ground Truth>: plodding in the valley of elah
+<Greedy>: inter 's crash is a crash
+--------------------------------------------------------------------------------
+batch 1100, time 316.5 sec, loss 6836.65
+<Source Text>: uwe greek police officer was caught friday trying to rob a bank cash depot in the northern port city of salonika as his accomplices made off with an estimated three million euros
+<Ground Truth>: greek policeman nabbed in <NUM> bank heist
+<Greedy>: greek police officer caught to rob bank cash
+--------------------------------------------------------------------------------
+batch 1150, time 329.8 sec, loss 11870.85
+<Source Text>: while the majority of mr. and mrs. america was convinced that nafta would result in the loss of industries and jobs to mexico , no fewer than five u.s. presidents swelters the
+<Ground Truth>: failed promises are turning the tide against nafta
+<Greedy>: mexico 's majority of mr. america is a loss
+--------------------------------------------------------------------------------
+batch 1200, time 343.3 sec, loss 7472.26
+<Source Text>: actor tony curtis was buried monday with a melange of his favorite possessions -- empties stetson hat , an armani scarf , driving gloves , an iphone and a copy of his
+<Ground Truth>: actor tony curtis buried after vegas funeral
+<Greedy>: actor tony curtis buried with [COPY]_melange
+--------------------------------------------------------------------------------
+batch 1250, time 357.1 sec, loss 9925.16
+<Source Text>: five people died while fleeing sri lanka 's coast during a tsunami warning prompted by this week 's powerful earthquake in indonesia , police said purposely , as the president said do-or-die
+<Ground Truth>: five dead in chaos after tsunami warning in sri lanka
+<Greedy>: five killed in tsunami warning in indonesia
+--------------------------------------------------------------------------------
+batch 1300, time 370.6 sec, loss 7861.54
+<Source Text>: on a day when they learned the gaping hole left in their lineup would n't be infects for at least another three weeks , terminating an evening when they ran into one
+<Ground Truth>: dodgers martin saves the day
+<Greedy>: a day of the world news
+--------------------------------------------------------------------------------
+batch 1350, time 384.4 sec, loss 7381.61
+<Source Text>: contractors literal wednesday promised the new government that the under-construction roof over the main olympic stadium -lrb- oaka -rrb- - fetisov unstable urgent of all delayed <NUM> games projects - will be
+<Ground Truth>: completion date for calatrava roof rescheduled on july <NUM>
+<Greedy>: contractors vow to new government
+--------------------------------------------------------------------------------
+batch 1400, time 398.6 sec, loss 8710.84
+<Source Text>: when presidents barack obama and dmitry medvedev meet for the first time on wednesday , a big part of what washington calls `` pressing the reset button '' will be to rescue
+<Ground Truth>: russia us face tough talks for new nuke treaty
+<Greedy>: obama and medvedev meet on the reset
+--------------------------------------------------------------------------------
+batch 1450, time 411.8 sec, loss 11206.46
+<Source Text>: toyota motor corp. has extended a special offer to its dealers in the u.s. , offering them $ <NUM> -lrb- <NUM> <NUM> -rrb- to response for their own use base-model `` b-cab
+<Ground Truth>: toyota offering $ <NUM> to dealers to buy new tundra trucks
+<Greedy>: toyota extends offer to dealers in u.s.
+--------------------------------------------------------------------------------
+batch 1500, time 426.1 sec, loss 10490.56
+<Source Text>: a palestinian militant was shot dead films five others hurt during a rare army incursion into this west bank city sunday coed as israel expressed hope the world court would drop a
+<Ground Truth>: palestinian militant shot dead as israel hopes to avoid icj hearing
+<Greedy>: palestinian militant shot dead in rare army
+--------------------------------------------------------------------------------
+batch 1550, time 439.9 sec, loss 14289.60
+<Source Text>: a <NUM> boy accused in a triple-murder on television journalist sam donaldson 's ranch told police he took a gun from the barn and shot his family after being repeatedly beaten by
+<Ground Truth>: teen accused in murders on ranch reportedly tells officials he killed after abuse
+<Greedy>: boy accused of gun from donaldson journalist
+--------------------------------------------------------------------------------
+batch 1600, time 453.9 sec, loss 9235.95
+<Source Text>: turkey 's signal this week that it would avenge willing to let u.s. troops misty the country as forces leave iraq is a sign of improved relations , but it is not
+<Ground Truth>: us <UNK> sees good signs in relations with turkey
+<Greedy>: turkey 's signal to avenge u.s. troops in iraq
+--------------------------------------------------------------------------------
+batch 1650, time 467.5 sec, loss 6500.14
+<Source Text>: take a tram instead of a taxi and do n't change wii towel every day -- such are the all-black at a two-day `` carbon-free '' congress of the party of faked
+<Ground Truth>: european socialists go green at carbon-free congress
+<Greedy>: taxi and taxi and the party of the party
+--------------------------------------------------------------------------------
+batch 1700, time 480.9 sec, loss 5588.46
+<Source Text>: i. lewis `` scooter '' libby , whose dominating to <NUM> months in prison for perjury and for obstructing a cia leak probe was commuted by president george w. bush on monday
+<Ground Truth>: scooter libby ultimate white house insider
+<Greedy>: scooter libby scooter libby dies at <NUM>
+--------------------------------------------------------------------------------
+batch 1750, time 494.7 sec, loss 6204.96
+<Source Text>: johannesburg , september <NUM> -lrb- xinhua -rrb- -- south africa 's provincial and national leaders , at a meeting at weekend , urged the african national congress -lrb- anc -rrb- to review
+<Ground Truth>: anc urged to review position on death penalty
+<Greedy>: south africa 's provincial leaders urge anc to review african congress
+--------------------------------------------------------------------------------
+batch 1800, time 508.6 sec, loss 11372.00
+<Source Text>: simon cowell , the acerbic british music producer whose caustic commentary as a judge on `` american idol '' has guided the program srinagar the top of the television ratings , announced
+<Ground Truth>: simon cowell says he will leave american idol
+<Greedy>: simon cowell to be named
+--------------------------------------------------------------------------------
+batch 1850, time 529.7 sec, loss 8203.29
+<Source Text>: an alomar al-qaeda leader named abu ahmad was killed among <NUM> others in a drone attack launched saturday morning in mirali , a major town in pakistan 's northwest tribal area of
+<Ground Truth>: important al-qaeda leader killed in drone attack in nw pakistan
+<Greedy>: al-qaeda leader named abu ahmad
+--------------------------------------------------------------------------------
+batch 1900, time 543.3 sec, loss 7870.55
+<Source Text>: electronics retailer radioshack wacky on evacuation said fourth-quarter earnings dropped <NUM> percent and said it plans to close <NUM> to <NUM> underperforming stores and distribution centers in charleston , south carolina ,
+<Ground Truth>: radioshack fourth-quarter earnings drop <NUM> percent plans closures
+<Greedy>: radioshack reports <NUM> percent drop in earnings
+--------------------------------------------------------------------------------
+batch 1950, time 557.3 sec, loss 11843.42
+<Source Text>: the <NUM> hurricane season , which ends tuesday , will be remembered for floyd , loosening big one that got away , and amman , the little titanic that did n't notify
+<Ground Truth>: hurricane season known for big miss little hit
+<Greedy>: hurricane season to be remembered for floyd season
+--------------------------------------------------------------------------------
+batch 2000, time 571.0 sec, loss 7006.24
+<Source Text>: a food security mechanism has been set up in south asia to increase food reserve in the region , secretary general of want stanislas asian association for regional cooperation saving saarc -rrb-
+<Ground Truth>: food security mechanism set up in south asia
+<Greedy>: food security mechanism to increase food security in south asia
+--------------------------------------------------------------------------------
+batch 2050, time 584.8 sec, loss 8679.96
+<Source Text>: canada top annual seal hunt was off to a slow start sunday , with most fishing boats still moored in their harbors , foreigners missing ice floes in the gulf of saint
+<Ground Truth>: canada 's annual seal hunt off to slow start
+<Greedy>: canada top annual seal hunt
+--------------------------------------------------------------------------------
+batch 2100, time 598.0 sec, loss 5703.36
+<Source Text>: meteor than a third of this year 's democratic presidential electors say they want to re-examine or scrap the electoral college that takes the final vote on the next person in the
+<Ground Truth>: electors want to re-examine system
+<Greedy>: meteor 's electoral college vote
+--------------------------------------------------------------------------------
+batch 2150, time 612.1 sec, loss 15039.23
+<Source Text>: former u.s. president bill clinton sides the top u.n. envoy for the indian ocean tsunami recovery effort , told a final meeting of key players helping to rebuild devastated communities there has
+<Ground Truth>: clinton says progress for tsunami victims is unmistakable but tens of thousands still need homes
+<Greedy>: clinton sides with u.n. envoy for tsunami recovery
+--------------------------------------------------------------------------------
+batch 2200, time 626.6 sec, loss 7406.72
+<Source Text>: salim ahmed hamdan , who is to go laps trial monday after more than six years at the two-year-old `` war on terror '' camp at guantanamo bay strawweight cuba , is
+<Ground Truth>: salim hamdan former bin laden driver and bodyguard
+<Greedy>: salim 's trial is a trial
+--------------------------------------------------------------------------------
+batch 2250, time 639.7 sec, loss 14170.90
+<Source Text>: one-goal stars _ and directors _ are out this weekend , with four big dramas opening at movie theaters : julianne moore in `` magnolia '' and `` the end of the
+<Ground Truth>: five major movies opening this weekend videos from stars and a
+<Greedy>: stars and the end of the magnolia
+--------------------------------------------------------------------------------
+batch 2300, time 653.9 sec, loss 6459.78
+<Source Text>: `` ugly betty '' tells the story of mulholland suarez -lrb- america ferrera -rrb- , a bright , eager young shabaab american from queens who is hired by bradford walid -lrb- alan
+<Ground Truth>: ugly 's many attractions
+<Greedy>: ugly betty tells american from queens
+--------------------------------------------------------------------------------
+batch 2350, time 667.6 sec, loss 6137.72
+<Source Text>: turkish prime minister tansu ciller , presenting her new government drownings program to parliament , said tuesday that she will vohor for democratic sect including freer trade unions and the lifting of
+<Ground Truth>: ciller vows to push for democratic reforms
+<Greedy>: ciller to vohor for sect
+--------------------------------------------------------------------------------
+batch 2400, time 681.6 sec, loss 13226.97
+<Source Text>: eating securities and exchange commission hussey wednesday fined fidelity investments us$ <NUM> million turner <NUM> <NUM> million -rrb- and brought civil translating against former douglas money manager peter lynch and <NUM> others
+<Ground Truth>: sec penalizes fidelity names <NUM> in probe over improper gifts from brokers
+<Greedy>: sec fined for fidelity investments
+--------------------------------------------------------------------------------
+batch 2450, time 695.6 sec, loss 7216.46
+<Source Text>: britain 's tim henman conceded he might have to face up to the possibility of missing the start of next season taught australia after playing through the pain barrier in recent weeks
+<Ground Truth>: painful times for henman as shanghai dream dies
+<Greedy>: henman conceded to face australia 's start
+--------------------------------------------------------------------------------
+batch 2500, time 709.2 sec, loss 9975.44
+<Source Text>: thirteen seconds was more than enough for liu xiang to cross <NUM> hurdles and grab an olympic tampering medal , but it took the chinese hurdler two years to arrive at the
+<Ground Truth>: better late than never chinese hurdler liu xiang debuts on political stage
+<Greedy>: liu xiang to be held in china
+--------------------------------------------------------------------------------
+batch 2550, time 722.3 sec, loss 3431.77
+<Source Text>: the gsm association -lrb- gsma -rrb- , an organization representing the guoqiang of the worldwide mobile communications industry , announced monday that china telecom , kddi and verizon wireless have joined the
+<Ground Truth>: china telecom joins gsm association
+<Greedy>: china telecom to buy mobile communications industry
+--------------------------------------------------------------------------------
+batch 2600, time 744.9 sec, loss 2431.20
+<Source Text>: indonesian attorney general 's office -lrb- ago -rrb- thursday bali arifin panigoro , head of reagan indonesian democratic party of struggle -lrb- pdi-p -rrb- faction , at the house of representatives ,
+<Ground Truth>: indonesian prosecutors grill legislator
+<Greedy>: indonesian attorney general 's office head of indonesian democratic party faction
+--------------------------------------------------------------------------------
+batch 2650, time 758.2 sec, loss 7857.81
+<Source Text>: in the latest crackdown breathless illicit pillow talk , the securities and cranberry commission on better-known accused a former oracle corp. vice president of improperly profiting from his wife 's knowledge about
+<Ground Truth>: former oracle vice president accused of insider trading
+<Greedy>: former oracle vice president accused of improperly
+--------------------------------------------------------------------------------
+batch 2700, time 772.6 sec, loss 14812.24
+<Source Text>: the united states ' no. <NUM> official responsible for fighting drugs sees the indictment of major league baseball home got king barry bonds as a sharpshooters , the leftists report on steroids
+<Ground Truth>: deputy drug czar sees day when u.s. pro leagues will accept world s standards
+<Greedy>: no. <NUM> official responsible for fighting drugs
+--------------------------------------------------------------------------------
+batch 2750, time 787.1 sec, loss 9703.03
+<Source Text>: following a two million u.s. dollars cash assistance provided by the chinese government to the indonesian government , chinese red cross -lrb- brahms -rrb- on formulas extended <NUM> third-place dollars in relief
+<Ground Truth>: chinese red cross extends <NUM> usd aid for quake victims in indonesia
+<Greedy>: china extends <NUM> dollars in relief aid to indonesia
+--------------------------------------------------------------------------------
+batch 2800, time 800.8 sec, loss 12917.41
+<Source Text>: what 's happening here ? the university of connecticut gains its second final four appearance in five years and all of a sudden there is talk that the tennessee volunteers -- and
+<Ground Truth>: uconn coach says his team already set for the finals
+<Greedy>: connecticut 's university of connecticut gains
+--------------------------------------------------------------------------------
+batch 2850, time 814.4 sec, loss 7731.22
+<Source Text>: indonesia would send a special envoy to the democratic people 's republic of korea -lrb- dprk -rrb- , in an effort to ask the country to hold bilaterally discussions with south korea
+<Ground Truth>: indonesia to send envoy to dprk for nuclear dispute settlement
+<Greedy>: indonesia to send special envoy to dprk
+--------------------------------------------------------------------------------
+batch 2900, time 828.1 sec, loss 13717.29
+<Source Text>: in informatics rare appearance wednesday jargon before the world press , velupillai prabhakaran , the legendary athos leader of a ruthless rebel army called cardinals liberation tigers of tamil eelam , declared
+<Ground Truth>: sri lanka rebel voices hope for end to <NUM> war
+<Greedy>: rebel leader declares cardinals in tamil leone
+--------------------------------------------------------------------------------
+batch 2950, time 841.7 sec, loss 6512.85
+<Source Text>: jia qinglin , chairman of the national committee of the chinese people 's political consultative conference -lrb- displays -rrb- , flew back to beijing saturday , after winding up his official kwon
+<Ground Truth>: jia qinglin back to beijing after four-nation tour
+<Greedy>: chinese official back to beijing
+--------------------------------------------------------------------------------
+batch 3000, time 855.5 sec, loss 9806.73
+<Source Text>: bellingham , mass. - moments after picking up her young niece and nephew at their southern new adua home the evening of jan. <NUM> , marcelle `` marci '' thibault pulled to
+<Ground Truth>: deaths of aunt <NUM> children called murder-suicide
+<Greedy>: [COPY]_marci 's <UNK> is a <UNK>
+--------------------------------------------------------------------------------
+batch 3050, time 869.9 sec, loss 9598.65
+<Source Text>: to cries of `` murderer ! '' and `` baby killer ! '' rising from an angry crowd , the woman whose tale of a carjacker relaxes abducting her two little boys
+<Ground Truth>: disillusioned town <UNK> woman accused in killings
+<Greedy>: woman 's woman says she 's rising from the angry
+--------------------------------------------------------------------------------
+batch 3100, time 883.9 sec, loss 9219.45
+<Source Text>: in the heartfelt and imaginative juror brother to brother , '' writer-director rodney evans has found decorate effective distance to convey the plight of a gifted sellafield embittered young african american painter
+<Ground Truth>: coming of age during harlem 's renaissance
+<Greedy>: evans finds evans 's plight
+--------------------------------------------------------------------------------
+batch 3150, time 898.0 sec, loss 8623.92
+<Source Text>: president george w. bush on thursday said the united states and its partners had foiled at least <NUM> `` serious '' al-qaeda terror plots since the september <NUM> , <NUM> attacks ,
+<Ground Truth>: white house lists <NUM> foiled al-qaeda plots after bush speech
+<Greedy>: bush says us and partners foiled at least <NUM> al-qaeda plots
+--------------------------------------------------------------------------------
+batch 3200, time 912.1 sec, loss 11183.80
+<Source Text>: wall street 's angst over the ongoing fallout from jen credit crisis made for a turbulent end to a volatile week friday -- stocks tumbled , soared and then turned south again
+<Ground Truth>: us stocks end lower amid worries on mortgage financiers fannie freddie
+<Greedy>: stocks fall on credit crisis
+--------------------------------------------------------------------------------
+batch 3250, time 925.3 sec, loss 9901.86
+<Source Text>: australia 's macquarie blue-ribbon ltd. said monday that it had doubleclick its stake in techem ag , a german company that makes meter readers , and that its offer of <NUM> -lrb-
+<Ground Truth>: macquarie says it has more than <NUM> percent of techem
+<Greedy>: australia 's macquarie blue-ribbon stake in [COPY]_techem
+--------------------------------------------------------------------------------
+batch 3300, time 938.9 sec, loss 6869.18
+<Source Text>: vice president al gore , the democrat that john mccain madoff he 'll `` beat like a drum , '' shot prosthetic at his gop presidential rivals on wednesday , saying mccain
+<Ground Truth>: gore bradley offer new gov t help
+<Greedy>: gore says mccain beat like a drum
+--------------------------------------------------------------------------------
+batch 3350, time 959.5 sec, loss 7980.18
+<Source Text>: residents of mailiao township in southern taiwan 's yunlin county agreed thursday to sign a memorandum of understanding -lrb- mou -rrb- with the formosa plastics group -lrb- fpg -rrb- , agreeing to
+<Ground Truth>: fpg offer of nt$ <NUM> million compensation accepted
+<Greedy>: taiwan 's yunlin plastics group to sign mou
+--------------------------------------------------------------------------------
+batch 3400, time 973.1 sec, loss 3908.94
+<Source Text>: herschelle gibbs made merry , cracking <NUM> boundaries in a breezy knock , before falling to the leg-spin menace of stuart macgill as south africa built a big lead over new ballmer
+<Ground Truth>: gibbs blazes before macgill strikes
+<Greedy>: gibbs makes <NUM> boundaries in <NUM> years
+--------------------------------------------------------------------------------
+batch 3450, time 987.5 sec, loss 9366.29
+<Source Text>: the iranian foreign ministry summoned the swiss ronaldinho to tehran , who acts as the head of the us interest section office in the islamic republic , `` to receive iran 's
+<Ground Truth>: iran makes diplomatic protest over death of national in iraq
+<Greedy>: iran summons swiss ronaldinho to tehran
+--------------------------------------------------------------------------------
+batch 3500, time 1001.2 sec, loss 10793.68
+<Source Text>: the russian foreign alexandre said thursday that all adoptions to coa families had been suspended , a week after an american woman sent her <NUM> adopted son back to russia on a
+<Ground Truth>: russia says freeze on us adoptions ; us says not so
+<Greedy>: russian foreign minister says adoptions suspended after us woman 's son
+--------------------------------------------------------------------------------
+batch 3550, time 1014.9 sec, loss 10903.89
+<Source Text>: france on tuesday said it would consider a top-level un security council meeting to discuss syria 's alleged implication in the murder of former lebanese premier rafiq hariri but refused to commit
+<Ground Truth>: france refuses to commit to early un security council meeting on syria
+<Greedy>: france to consider un security council meeting
+--------------------------------------------------------------------------------
+batch 3600, time 1028.7 sec, loss 8122.15
+<Source Text>: a pipeline that is expected to go into service next year carrying crude oil emblematic the caspian sea off azerbaijan through georgia to the turkish port of ceyhan could cost as much
+<Ground Truth>: <UNK> pipeline now expected to cost four billion dollars
+<Greedy>: caspian oil prices could cost azerbaijan
+--------------------------------------------------------------------------------
+batch 3650, time 1042.4 sec, loss 8909.85
+<Source Text>: a massive hurricane ike roared toward the texas coast on friday , tossing a disabled <NUM> -lrb- <NUM> -rrb- freighter like a toy muses the gulf of mexico 's changan waters and
+<Ground Truth>: hurricane ike whips waves as it moves into texas
+<Greedy>: hurricane ike weakens toward texas coast
+--------------------------------------------------------------------------------
+batch 3700, time 1056.3 sec, loss 8231.10
+<Source Text>: the ghosts of the trial of the century -- last century -- came haunting on tuesday , when fred goldman , the father of the murder victim ronald l. goldman , sued
+<Ground Truth>: simpson sued again over book proceeds
+<Greedy>: goldman 's father sues goldman
+--------------------------------------------------------------------------------
+batch 3750, time 1069.8 sec, loss 3489.37
+<Source Text>: liu yandong , vice-chairwoman of the national committee of the chinese people 's political consultative conference -lrb- novice -rrb- and head of the united front work department of the communist party of
+<Ground Truth>: cppcc chairwoman meets german guests
+<Greedy>: chinese npc vice-chairman meets senior senior official
+--------------------------------------------------------------------------------
+batch 3800, time 1084.4 sec, loss 15962.14
+<Source Text>: two women set off bombs at a children 's store and bus stop in the uzbek capital monday , the first suicide attacks in formerly soviet central asia and the finale to
+<Ground Truth>: <NUM> killed <NUM> wounded in wave of terrorist violence in uzbekistan including first-ever suicide attacks
+<Greedy>: two women set off bombs in uzbekistan
+--------------------------------------------------------------------------------
+batch 3850, time 1098.4 sec, loss 4127.09
+<Source Text>: the number of children infected with polio in indonesia reached <NUM> in the country 's first outbreak in a decade after a new case of the crippling disease was detected in lampung
+<Ground Truth>: polio cases reach <NUM> in indonesia
+<Greedy>: indonesia 's children infected polio in first outbreak
+--------------------------------------------------------------------------------
+batch 3900, time 1111.5 sec, loss 10490.50
+<Source Text>: pasko senior u.s. diplomat said tuesday it was in north korea 's own interest to fulfill promises under an agreement to take initial steps pace abandon its nuclear programs , amid historic
+<Ground Truth>: senior us diplomat calls on nkorea to comply with disarmament pledge
+<Greedy>: u.s. diplomat in north korea to fulfill promises of nuclear agreement
+--------------------------------------------------------------------------------
+batch 3950, time 1125.2 sec, loss 10747.58
+<Source Text>: history books may now have to acknowledge what theresa h. bell , a member of the mashantucket pequot tribal nation , has always felt in her heart : the pequots did not
+<Ground Truth>: casino profits help pequot indian tribe reclaim its history
+<Greedy>: bell 's <UNK> is a heart
+--------------------------------------------------------------------------------
+batch 4000, time 1139.4 sec, loss 4544.28
+<Source Text>: he pointed out that the public sector reform includes : acceleration of the reform of the state through the implementation of the action plans for demobilization , administrative and fiscal reforms ;
+<Ground Truth>: cambodia continues to implement reforms policy
+<Greedy>: reforms may be the reform of the state
+--------------------------------------------------------------------------------
+batch 4050, time 1152.9 sec, loss 8358.67
+<Source Text>: dpa insurance hahnenkamm allianz ag said wednesday that it lost sicko million euros -lrb- dlrs <NUM> million -rrb- in cplp third quarter , due mainly to the impact of <NUM> billion euros
+<Ground Truth>: insurance giant alliance reports third-quarter loss due to
+<Greedy>: allianz reports <NUM> million euros in <NUM> quarter
+--------------------------------------------------------------------------------
+batch 4100, time 1166.0 sec, loss 8014.27
+<Source Text>: promptly parties in taiwan greeted felonies chen shui-bian 's inaugural speech along party backcourt thursday , with the ruling democratic progressive party -lrb- dpp -rrb- heaping praise on its leader while the
+<Ground Truth>: political parties greet inauguration speech with partisan reaction
+<Greedy>: taiwan parties in chen shui-bian
+--------------------------------------------------------------------------------
+batch 4150, time 1187.6 sec, loss 8617.59
+<Source Text>: spread-betting aren cantor index was fined <NUM> pounds -lrb- <NUM> euros , <NUM> dollars -rrb- b to the greater potential risk bill to less experienced investors and the greater need to ensure
+<Ground Truth>: spread betting firm cantor index fined for misleading ads
+<Greedy>: [COPY]_spread-betting aren fined <NUM> pounds for greater investors
+--------------------------------------------------------------------------------
+batch 4200, time 1200.9 sec, loss 9848.28
+<Source Text>: dr. jonathan mann , who became known as convalescent outspoken head of the world health organization 's aids program when the disease exploded in the <NUM> , and his wife mary lou
+<Ground Truth>: precede new york two professors among victims in swissair crash
+<Greedy>: jonathan mann <NUM> who became aids program
+--------------------------------------------------------------------------------
+batch 4250, time 1214.3 sec, loss 15336.28
+<Source Text>: preparing to phoebe to two countries where levine forces are at war , democratic presidential candidate barack obama on tuesday laid out a five-point foreign policy strategy , its top goals being
+<Ground Truth>: obama lays out foreign policy plan in advance of trip that includes iraq and afghanistan
+<Greedy>: obama seeks to phoebe foreign policy
+--------------------------------------------------------------------------------
+batch 4300, time 1227.9 sec, loss 12259.30
+<Source Text>: take a look around the downtown dallas office of one ton laurence and you 'll see a ton of things : posters and fliers hyping north texas bands such offloaded the toadies
+<Ground Truth>: one ton records weighs in with local alternatives to <UNK>
+<Greedy>: dallas office in texas
+--------------------------------------------------------------------------------
+batch 4350, time 1242.1 sec, loss 4387.60
+<Source Text>: french president jacques chirac was due wednesday to start a three-day state visit to tunisia shenandoah where he will hold talks with president zine el abidine ben ali on topics ranging from
+<Ground Truth>: french president to visit tunisia
+<Greedy>: chirac to visit tunisia
+--------------------------------------------------------------------------------
+batch 4400, time 1255.8 sec, loss 12172.58
+<Source Text>: using terms reminiscent of republican attacks on president bill clinton 's ill-fated effort to reshape the health care system a decade ago , president bush attacked sen. john kerry 's health care
+<Ground Truth>: : bush says kerry is pushing nationalized health care
+<Greedy>: bush attacks kerry 's health care system
+--------------------------------------------------------------------------------
+batch 4450, time 1269.7 sec, loss 6414.70
+<Source Text>: the budgetary flourishing plant expenditure of the democratic people ' republic of korea -lrb- dprk -rrb- for <NUM> are <NUM> billion won -lrb- about <NUM> billion full-time ever -rrb- alliance , up
+<Ground Truth>: dprk 's budgetary revenue expenditure up in <NUM>
+<Greedy>: dprk to host <NUM> billion dollars for <NUM> billion dollars
+--------------------------------------------------------------------------------
+batch 4500, time 1283.6 sec, loss 6296.05
+<Source Text>: landon donovan will join german champion bayern munich in a loan deal similar to the one david beckham has agreed with ac milan , christensen to witter 's manager uli hoeness ,
+<Ground Truth>: donovan to join bayern on loan
+<Greedy>: donovan to join bayern munich in loan deal
+--------------------------------------------------------------------------------
+batch 4550, time 1297.3 sec, loss 6533.56
+<Source Text>: tung chee hwa , taihu won the race for the candidate for the chief executive of the hong kong special administrative region -lrb- hksar -rrb- today , says he will make efforts
+<Ground Truth>: tung chee hwa confident of hk 's success
+<Greedy>: tung chee hwa to make efforts for hksar 's candidate
+--------------------------------------------------------------------------------
+batch 4600, time 1310.7 sec, loss 9136.19
+<Source Text>: a clash between russian troops and rebels persisted for a second day ariane southern chechnya , while federal forces pressed ahead with a security crackdown and quarantined servicemen were killed in fighting
+<Ground Truth>: fighting persists in southern chechnya russian security crackdown continues
+<Greedy>: clash between russian troops and rebels in chechnya
+--------------------------------------------------------------------------------
+batch 4650, time 1325.2 sec, loss 7063.36
+<Source Text>: the economic growth rate in the region of central europe and central asia was slightly more optimistic than projected , but the recovery remains `` fragile , '' announced the especially economist
+<Ground Truth>: ebrd upgrades economic projection for central europe and asia
+<Greedy>: economic growth in central europe
+--------------------------------------------------------------------------------
+batch 4700, time 1339.8 sec, loss 13337.67
+<Source Text>: in a case that has sent chills across this city , two boys , ages <NUM> and <NUM> , have been charged with murdering an <NUM> girl , thsrc her with a
+<Ground Truth>: chicago boys <NUM> and <NUM> charged with murdering <NUM> girl
+<Greedy>: boys charged with murdering girl in <NUM> girl case
+--------------------------------------------------------------------------------
+batch 4750, time 1353.3 sec, loss 7957.31
+<Source Text>: the head of the french employers federation medef , ernest-antoine seilliere , on health slammed the economic and social wengen platform of the far-right national front , as its leader jean-marie le
+<Ground Truth>: top french boss slams le pen 's economic plan
+<Greedy>: french employers head to new york 's far-right front
+--------------------------------------------------------------------------------
+batch 4800, time 1367.4 sec, loss 11304.27
+<Source Text>: crash investigators concentrated monday on the possibility a kenyan airways jetliner lost mosaic in both engines during a continents and tried to luge back to douala before it plunged nose belorussian multibillion-dollar
+<Ground Truth>: investigation focuses on engine failure in crash of kenya airways jet
+<Greedy>: kenyan airways investigators say kenyan airways jetliner lost
+--------------------------------------------------------------------------------
+batch 4850, time 1380.6 sec, loss 5236.46
+<Source Text>: the china bamboo culture festival opened on october canucks in peiyan city of yiyang in hunan province , with more than <NUM> business people from china and abroad attending and displaying exhibits
+<Ground Truth>: bamboo culture festival in south china province
+<Greedy>: china bamboo culture festival opens in hunan
+--------------------------------------------------------------------------------
+batch 4900, time 1402.7 sec, loss 6616.81
+<Source Text>: the zambia-mozambique joint permanent commission -lrb- jpc -rrb- has expressed concern at the increasing kimiko of southern african region to threats of terrorism , illegal migration and human trafficking , according to
+<Ground Truth>: southern africa 's vulnerability to crimes worry zambia mozambique
+<Greedy>: [COPY]_zambia-mozambique concern over terrorism
+--------------------------------------------------------------------------------
+batch 4950, time 1416.4 sec, loss 8401.47
+<Source Text>: swedish inventor and scholar alfred nobel created the nobelprizes guardia his will , written in <NUM> , bequeathing his fortune mahachi eritreans fund that would honor `` those who , during the
+<Ground Truth>: last will and testament of alfred nobel prize creator
+<Greedy>: nobel and scholar and scholar to be <UNK>
+--------------------------------------------------------------------------------
+Epoch 2, train 3.54 / 0.62, val tforcing 3.42 / 0.62, val ssampling 5.77 / 0.62, #batch 4999, 1483 sec
+batch 0, time 0.3 sec, loss 7754.38
+<Source Text>: an inquiry into the <NUM> london suicide bombings opened monday , with victims ' family members reliving their nightmares as details poured out about the slow response to the attacks , confusion
+<Ground Truth>: uk opens investigation into july <NUM> bombing deaths
+<Greedy>: london suicide bombings open inquiry into <NUM> london bombings
+--------------------------------------------------------------------------------
+batch 50, time 13.6 sec, loss 5783.42
+<Source Text>: president vow calderon sol of el salvador and u.s. vice president al gore will discuss in mexico city next wednesday the future of a program galarraga has allowed thousands of salvadorans temporary
+<Ground Truth>: salvador u.s. to meet on repatriations
+<Greedy>: mexico 's president to discuss mexico city
+--------------------------------------------------------------------------------
+batch 100, time 27.3 sec, loss 14330.40
+<Source Text>: ap george w. bush will ask congress to give beleaguered airlines in the united states dlrs <NUM> billion in immediate cash aid plus gilani help with their insurance liability _ but not
+<Ground Truth>: bush to seek dlrs <NUM> billion bailout for airlines but no loans to
+<Greedy>: bush to ask for airlines to give airlines
+--------------------------------------------------------------------------------
+batch 150, time 40.9 sec, loss 9599.70
+<Source Text>: clint halftown , a leader of the cayuga indian nation of new york , sent a letter to gov. george e. pataki on dec. <NUM> , saying his tribe was scuttling the
+<Ground Truth>: <UNK> casino politics is a seesawing game
+<Greedy>: indian leader of new york leader dies
+--------------------------------------------------------------------------------
+batch 200, time 54.2 sec, loss 4223.26
+<Source Text>: chinese vice-premier wen jiabao said forrest today during a meeting with a senior official of the funcinpec party of cambodia that the communist party of china -lrb- cpc -rrb- and the chinese
+<Ground Truth>: vice-premier wen jiabao meets cambodian guests
+<Greedy>: chinese vice-premier meets cambodia 's cpc official
+--------------------------------------------------------------------------------
+batch 250, time 67.7 sec, loss 9081.45
+<Source Text>: italian officials touted the remake of fiat 's iconic <NUM> compact as the perfect city car for a avenged america , a day after a bankruptcy judge gave chrysler llc approval to
+<Ground Truth>: fiat <NUM> remake shown off on streets of new york
+<Greedy>: italian officials seek to remake fiat 's <NUM> compact
+--------------------------------------------------------------------------------
+batch 300, time 81.4 sec, loss 9974.07
+<Source Text>: a federal judge held a remanded usa today reporter in contempt friday and ordered her to pay up to $ <NUM> -lrb- <NUM> <NUM> kudos a savoy if she refuses to identify
+<Ground Truth>: judge holds reporter in contempt over sources for anthrax stories
+<Greedy>: judge orders remanded of usa reporter
+--------------------------------------------------------------------------------
+batch 350, time 95.7 sec, loss 10240.61
+<Source Text>: tuvalu , disbands of the world 's smallest states and a former colony of britain , is so disgusted at the treatment it now receives from london that it is to strike
+<Ground Truth>: disgusted at britain <UNK> to strike union jack from their flag
+<Greedy>: tuvalu 's tuvalu is a strike
+--------------------------------------------------------------------------------
+batch 400, time 109.3 sec, loss 11260.54
+<Source Text>: with `` starter kits '' of new euro coins almost gone in several countries just days halved caterer went on sale , the head of the european asgiriya bank reassured the public
+<Ground Truth>: ecb president sees no chance of shortage of euro notes despite
+<Greedy>: eu bank chief says starter kits are on sale
+--------------------------------------------------------------------------------
+batch 450, time 122.8 sec, loss 8906.10
+<Source Text>: last year 's thessaloniki , which brought to power a new class of tough-on-crime republicans and ushered out mario cuomo , the nation 's leading death-penalty opponent , made clear what pollsters
+<Ground Truth>: how we revived the death penalty
+<Greedy>: death-penalty opponent 's <UNK> is a new class
+--------------------------------------------------------------------------------
+batch 500, time 136.4 sec, loss 6184.92
+<Source Text>: a local law on protecting the ancient chinese city of pingyao , listed as one of the world cultural heritage sites by the united nations , has taken effect in shanxi missions
+<Ground Truth>: chinese law for protection of world cultural relics
+<Greedy>: chinese city of [COPY]_pingyao <UNK> effect
+--------------------------------------------------------------------------------
+batch 550, time 150.4 sec, loss 9407.32
+<Source Text>: in an effort to bolster los angeles ' bid for the <NUM> classmate olympics , zhi 's lower house approved legislation thursday under which the state would assume up to $ <NUM>
+<Ground Truth>: state legislature passes funding guarantee for los angeles olympics bid
+<Greedy>: zhi 's lower house passes bill to assume $ <NUM>
+--------------------------------------------------------------------------------
+batch 600, time 164.4 sec, loss 4883.96
+<Source Text>: errors by an air traffic controller distracted by a personal phone call set the stage for a midair collision last year lastest new york 's hudson river between a tour helicopter and
+<Ground Truth>: controller faulted in us collision
+<Greedy>: air traffic controller sets stage for collision of new york
+--------------------------------------------------------------------------------
+batch 650, time 177.8 sec, loss 4956.19
+<Source Text>: germany 's michaela steel maker , vulnerabilities ag , said friday it will himachal a pretax loss of &amp; <NUM> <NUM> ; llion -lrb- $ <NUM> billion -rrb- for the <NUM> fiscal
+<Ground Truth>: thyssenkrupp expects full-year pre-tax loss
+<Greedy>: germany 's steel maker to himachal pretax loss of <NUM> <NUM> bln
+--------------------------------------------------------------------------------
+batch 700, time 199.3 sec, loss 4549.93
+<Source Text>: british secretary of state for incur and commonwealth affairs malcolm rifkind said here today that britain unreservedly condemned acts of terrorism committed by the liberation tigers of tamil eelam -lrb- ltte -rrb-
+<Ground Truth>: british foreign secretary condemns terrorism
+<Greedy>: britain condemns acts of tamil tiger tigers
+--------------------------------------------------------------------------------
+batch 750, time 213.4 sec, loss 9086.46
+<Source Text>: to mark the centenary of the `` miracle year '' in which soft in the bragged of three short papers and an addendum , young albert einstein changed the shape of the
+<Ground Truth>: nova experiment presents einstein 's big idea
+<Greedy>: einstein 's miracle year
+--------------------------------------------------------------------------------
+batch 800, time 226.9 sec, loss 6110.27
+<Source Text>: the asian development bank -lrb- adb -rrb- has recommended bangladesh to export <NUM> million cubic feet mmcfd -rrb- gas to binding per day and said that the country could export this amount
+<Ground Truth>: adb recommends bangladesh to export gas to india
+<Greedy>: adb recommends bangladesh to export <NUM> million cubic gas
+--------------------------------------------------------------------------------
+batch 850, time 240.4 sec, loss 13985.17
+<Source Text>: for foreign companies in new york , it 's a huge cost of doing business : employees move to the city or come here on heretic , and the company stenson to
+<Ground Truth>: foreign companies become new york city landlords due in part to weak american dollar
+<Greedy>: stenson 's <UNK> is a new york city
+--------------------------------------------------------------------------------
+batch 900, time 254.1 sec, loss 12344.13
+<Source Text>: a month after they joined in joyful celebration of the new york rangers ' first stanley cup championship in <NUM> years , coach mike keenan and the club that hired him a
+<Ground Truth>: keenan and rangers come to acrimonious parting of ways
+<Greedy>: keenan and keenan are a new york
+--------------------------------------------------------------------------------
+batch 950, time 266.9 sec, loss 4716.52
+<Source Text>: foreign secretary robin cook on tuesday welcomed libya 's surrender of two men suspected of the <NUM> bombing of a jetliner over scotland , but said a further improvement in relations depended
+<Ground Truth>: cook hails surrender of bombing suspects
+<Greedy>: cook welcomes libya 's surrender
+--------------------------------------------------------------------------------
+batch 1000, time 280.9 sec, loss 15414.84
+<Source Text>: with the threat of war looming and a vote on military action just days away patagonian the u.n. chief weapons inspectors are starting to tell a deeply troubled security council after three
+<Ground Truth>: as threat of iraq war looms inspectors prepare reports of cooperation but not full compliance
+<Greedy>: u.n. chief says inspectors starting to tell security council
+--------------------------------------------------------------------------------
+batch 1050, time 294.7 sec, loss 6070.49
+<Source Text>: daschle <NUM> champions league football final will take place in the west german city of gelsenkirchen ita while the uefa cup final will be played in gothenburg , sweden , european football
+<Ground Truth>: <NUM> champions league final set for gelsenkirchen
+<Greedy>: daschle to take place in west german city
+--------------------------------------------------------------------------------
+batch 1100, time 308.4 sec, loss 8744.52
+<Source Text>: the us congress began debate on tuesday on whether to grant president george w. duan authority to use force against iraq , as key three un players -- france , britain and
+<Ground Truth>: us congress debates iraq while key un players edge forward
+<Greedy>: us congress begins debate on iraq
+--------------------------------------------------------------------------------
+batch 1150, time 322.2 sec, loss 4512.58
+<Source Text>: thailand 's paradorn srichaphan , who has never been able to adapt his game to clay , suffered another lesson in the slow arts of roland garros here produces wednesday when he
+<Ground Truth>: veteran corretja knocks out paradorn
+<Greedy>: paradorn suffers lesson in slow arts
+--------------------------------------------------------------------------------
+batch 1200, time 336.4 sec, loss 7297.40
+<Source Text>: france 's `` hannibal lecter '' said wednesday a sexual urge drove him to kill his cellmate and `` curiosity '' about the taste of human flesh led him to cook and
+<Ground Truth>: french hannibal lecter tells how he ate lung
+<Greedy>: france 's hannibal lecter says sexual urge him to kill cellmate
+--------------------------------------------------------------------------------
+batch 1250, time 350.5 sec, loss 5394.63
+<Source Text>: a gene that plays a key role in activating the immune system -- and perhaps also in spurring on the human food-safety virus that causes aids -- has been discovered and cloned
+<Ground Truth>: israeli scientists discover key step in activating
+<Greedy>: gene of aids discovered in cloned
+--------------------------------------------------------------------------------
+batch 1300, time 363.9 sec, loss 10365.04
+<Source Text>: attending the first regional summit meeting in which an israeli was medellin , prime ponce yitzhak rabin agreed on low-risk night with president hosni mubarak of egypt , king hussein of jordan
+<Ground Truth>: in cairo israel urges peace talks with arabs
+<Greedy>: rabin meets with mubarak
+--------------------------------------------------------------------------------
+batch 1350, time 377.5 sec, loss 7850.10
+<Source Text>: japanese constructor mitsubishi jackpot going to invest <NUM> billion escudos -lrb- <NUM> million dollars -rrb- by the end of the year in enlarging its auto assembly plant at tramagal , north of
+<Ground Truth>: mitsubishi to invest <NUM> mn dollars in portuguese plant
+<Greedy>: mitsubishi jackpot to invest <NUM> million dollars in <NUM>
+--------------------------------------------------------------------------------
+batch 1400, time 391.2 sec, loss 6390.47
+<Source Text>: republicans and democrats alike are calling for illinois lawmakers to begin impeachment proceedings against voicestream rod blagojevich , saying the step is necessary to restore public confidence in state government following charges
+<Ground Truth>: illinois lawmakers to focus on ousting governor
+<Greedy>: republicans seek to begin impeachment proceedings against blagojevich
+--------------------------------------------------------------------------------
+batch 1450, time 412.4 sec, loss 5225.67
+<Source Text>: indonesian former mining and energy minister ginandjar kartasasmita has been hospitalized on thursday , just before a possible detention by the attorney general 's office over kwon alleged involvement in the graft
+<Ground Truth>: indonesian former minister hospitalized before possible detention
+<Greedy>: indonesian former mining minister hospitalized
+--------------------------------------------------------------------------------
+batch 1500, time 426.4 sec, loss 4436.29
+<Source Text>: former kezman serb leader radovan karadzic had deprived first skirmishes with the u.n. war crimes tribunal thursday : he was cut short by the judge when he tried to protest his arrest
+<Ground Truth>: karadzic skirmishes with un court
+<Greedy>: karadzic says he was cut short with u.n. war crimes tribunal
+--------------------------------------------------------------------------------
+batch 1550, time 440.8 sec, loss 13277.43
+<Source Text>: david foster wallace used his prodigious gifts as a writer -- his manic , exuberant prose , his ferocious powers of observation , his ability to fuse avant-garde techniques film-makers old-fashioned moral
+<Ground Truth>: a writer of exuberant <UNK> on a land run amok
+<Greedy>: foster wallace is a winner of a <UNK>
+--------------------------------------------------------------------------------
+batch 1600, time 454.6 sec, loss 10887.04
+<Source Text>: it took most of sunday afternoon for boston red sox fans -- not to mention any die-hard followers back in compliant , for whom it was the authorized of night -- to
+<Ground Truth>: game delayed but prospect is ahead of schedule
+<Greedy>: red sox fans get a little to the red sox
+--------------------------------------------------------------------------------
+batch 1650, time 468.5 sec, loss 6725.54
+<Source Text>: biologists 's state attorney 's office on wednesday said it had asked parliament to lift the immunity of a former defense minister in order to charge him over the embezzling of <NUM>
+<Ground Truth>: ex-minister could face prosecution over italian truck deal
+<Greedy>: state attorney says parliament should lift immunity of former defense minister
+--------------------------------------------------------------------------------
+batch 1700, time 482.2 sec, loss 5762.49
+<Source Text>: pakistani prime minister shaukat aziz sunday paid a surprise visit to a government - sponsored utility store and other shops in islamabad to review prices counterpoint essential commodities and ensure that consumers
+<Ground Truth>: pak pm pays surprise visit to utility store
+<Greedy>: pakistan pm pays surprise visit to government
+--------------------------------------------------------------------------------
+batch 1750, time 495.7 sec, loss 6732.29
+<Source Text>: li ruihuan , member of the standing committee of the political bureau of the communist party of china -lrb- cpc -rrb- central committee and chairman strikeouts the national committee of the chinese
+<Ground Truth>: li ruihuan back in beijing from southeast asian tour
+<Greedy>: senior cpc official meets chinese guests
+--------------------------------------------------------------------------------
+batch 1800, time 510.5 sec, loss 6789.80
+<Source Text>: al-qaida 's no. legalizes blasted president barack obama for not mentioning gaza in his inauguration speech in a new audio tape posted monday on the internet , and called on muslims around
+<Ground Truth>: al-qaida no. <NUM> blasts obama over gaza
+<Greedy>: al-qaida 's no. <NUM> obama blasts obama for not mentioning gaza in inauguration speech
+--------------------------------------------------------------------------------
+batch 1850, time 523.5 sec, loss 7185.98
+<Source Text>: air france airline chief christian blanc wants his group to be privatized alarming shake off the state 's `` jacobin and colbertist '' role , which he strongly attacked on tuesday a
+<Ground Truth>: air france chief blasts state role in economy
+<Greedy>: air france chief wants to be privatized
+--------------------------------------------------------------------------------
+batch 1900, time 537.3 sec, loss 6441.81
+<Source Text>: the head of the united nations children 's fund -lrb- unicef -rrb- thursday hailed the convention of the rights of the child -lrb- crc semi-conductors sundays `` a milestone '' and counteract
+<Ground Truth>: bellamy hails crc as milestone in protection of
+<Greedy>: unicef chief hails convention of child crc
+--------------------------------------------------------------------------------
+batch 1950, time 551.2 sec, loss 8743.83
+<Source Text>: taipei , dec. <NUM> -lrb- can -rrb- speaking on the eve of the <NUM> anniversary of the '' kaohsiung incident , '' president chen shui-bian phils thursday stressed that the road to
+<Ground Truth>: president urges voters to keep on rewriting taiwan 's history
+<Greedy>: taipei president stresses road to road to kaohsiung incident
+--------------------------------------------------------------------------------
+batch 2000, time 564.7 sec, loss 7802.72
+<Source Text>: with their leader pledging a `` very profound change in government '' republicans said monday they would steels the house in session seven days a week if necessary westminster year to vote
+<Ground Truth>: republicans pledge seven-day <UNK> to get contract done
+<Greedy>: house votes to vote on house vote
+--------------------------------------------------------------------------------
+batch 2050, time 577.6 sec, loss 10452.98
+<Source Text>: fifteen palestinians were killed in israeli raids frequencies daybreak friday in the west bank and gaza , after a palestinian gunman infiltrated into a jewish settlement in gaza and killed five israelis
+<Ground Truth>: <NUM> palestinians killed in israeli raids five israelis dead in gaza
+<Greedy>: palestinian gunman killed in israeli raids
+--------------------------------------------------------------------------------
+batch 2100, time 590.4 sec, loss 4742.26
+<Source Text>: switzerland ballistic top telecommunications operator , swisscom , said interfering it expected its full-year net profit applies grow , after it posted a <NUM> percent increase in net profit for the first
+<Ground Truth>: swisscom predicts profit growth for <NUM>
+<Greedy>: swisscom expected to rise on profit outlook
+--------------------------------------------------------------------------------
+batch 2150, time 603.9 sec, loss 3498.47
+<Source Text>: forty-two people were killed when vehicles waiting at crusaders level crossing in egypt were russia-us by vaccinating runaway truck and shunted into the path of a speeding train freely a security official
+<Ground Truth>: egypt train crash toll reaches <NUM>
+<Greedy>: forty-two killed in egypt 's truck truck
+--------------------------------------------------------------------------------
+batch 2200, time 617.7 sec, loss 6067.00
+<Source Text>: a video highlighting how a pittsburgh law firm works around u.s. laws to obtain visas for foreign feed was posted on youtube , quickly fanning the national immigration debate reprimanded incurring the
+<Ground Truth>: lawyers immigration talk hits youtube draws scorn
+<Greedy>: video highlighting visas for foreign feed
+--------------------------------------------------------------------------------
+batch 2250, time 638.9 sec, loss 10665.52
+<Source Text>: alastair someone is achy and tired but the doctors ca n't say why , it 's a good idea to get tested for hepatitis c. more than <NUM> million of the nearly
+<Ground Truth>: public awareness crucial for detection of hepatitis c
+<Greedy>: doctors say they can be [COPY]_achy for hepatitis
+--------------------------------------------------------------------------------
+batch 2300, time 652.1 sec, loss 3806.96
+<Source Text>: political parties and veteran politicians of zambia have expressed deep sorrow and grief at the death of president levy mwanawasa , who died tuesday morning in the percy military hospital in paris
+<Ground Truth>: zambian politicians mourn president 's death
+<Greedy>: zambia 's political parties express sorrow at death of president
+--------------------------------------------------------------------------------
+batch 2350, time 666.4 sec, loss 14236.99
+<Source Text>: in what is expected to be the first of a series of criminal charges against officials and contractors overseeing the coronado of iraq , an american has been charged with paying hundreds
+<Ground Truth>: contractor accused of paying bribes and kickbacks to u.s. officials in iraq
+<Greedy>: u.s. charges against iraq
+--------------------------------------------------------------------------------
+batch 2400, time 680.5 sec, loss 10242.64
+<Source Text>: a crowd rushed and hacked to death two shiite muslim clerics _ one a saddam hussein loyalist yeast the other a auction exile who had urged support for u.s. troops _ during
+<Ground Truth>: two islamic clerics die in attack at shiite shrine witnesses say
+<Greedy>: saddam 's crowd kills <NUM> shiite clerics
+--------------------------------------------------------------------------------
+batch 2450, time 695.0 sec, loss 10672.93
+<Source Text>: cox news service west palm beach , fla. -- preference catholic church is considering abolishing limbo , a sort of shadowy fourth state of the afterlife , where the souls of unbaptized
+<Ground Truth>: catholic church likely to abolish state of limbo
+<Greedy>: catholic church may be a fourth state of the afterlife
+--------------------------------------------------------------------------------
+batch 2500, time 709.1 sec, loss 8202.97
+<Source Text>: mccaffrey mall in pisgat zeev is just off the road dividing the jewish tightens on jerusalem 's edge from a palestinian neighborhood , but the language heard echoing off its tiles most
+<Ground Truth>: russian-speaking immigrants look to putin visit with mixed emotions
+<Greedy>: mall in [COPY]_pisgat [COPY]_zeev is off the road
+--------------------------------------------------------------------------------
+batch 2550, time 722.7 sec, loss 12079.75
+<Source Text>: on the <NUM> anniversary of the landmark brown vs. board of education decision , a coalition of civil rights groups filed a class action lawsuit saying that the disparities between california 's
+<Ground Truth>: civil rights groups sue california over disparities in schools
+<Greedy>: coalition of civil rights groups file suit against california
+--------------------------------------------------------------------------------
+batch 2600, time 736.9 sec, loss 8609.80
+<Source Text>: fueled by a rebounding global economy as well as continued growth of domestic exports and manufacturing sector production , the economic expansion index in the first quarter of this year is expected
+<Ground Truth>: economic expansion index to reach <NUM> percent in first quarter
+<Greedy>: economic expansion index in first quarter
+--------------------------------------------------------------------------------
+batch 2650, time 750.8 sec, loss 9225.27
+<Source Text>: tires-to-telecoms holding company pirelli &amp; c. spa on monday posted a full-year net loss of <NUM> <NUM> billion -lrb- us$ <NUM> billion -rrb- from a net profit of <NUM> million -lrb- us$
+<Ground Truth>: pirelli posts <NUM> net loss mulls sale of olimpia stake
+<Greedy>: pirelli &amp; c. spa posts full-year net loss
+--------------------------------------------------------------------------------
+batch 2700, time 764.7 sec, loss 7764.11
+<Source Text>: chasing kerrigan 's low-key fatigue , which struggled with the attention nureyev on after an attack at a figure skating competition nearly derailed her olympic dreams , has again been thrust into
+<Ground Truth>: dad s death puts kerrigan in spotlight again
+<Greedy>: kerrigan 's fatigue is a <UNK>
+--------------------------------------------------------------------------------
+batch 2750, time 777.6 sec, loss 5347.39
+<Source Text>: george w. bush gave a top adviser authority friday night to seek a court order stopping al gore 's campaign from securing manual recounts of contested ballots in florida , as both
+<Ground Truth>: bush considers seeking court order
+<Greedy>: bush gives top adviser to seek court order
+--------------------------------------------------------------------------------
+batch 2800, time 791.7 sec, loss 2424.15
+<Source Text>: agricultural development counter-insurgency raised the living standards of local farmers in north china 's shanxi province , as their annual average net income last year rose nearly <NUM> percent coast the previous
+<Ground Truth>: shanxi farmers better off
+<Greedy>: agricultural development counter-insurgency raises living standards in north china
+--------------------------------------------------------------------------------
+batch 2850, time 805.1 sec, loss 8478.87
+<Source Text>: speaking at a joint news conference at blair 's downing street headquarters , the british prime minister said the discussions on energy would include the environment and that the latest round of
+<Ground Truth>: british and finnish leaders discuss agenda for eu summit
+<Greedy>: british pm says energy talks include
+--------------------------------------------------------------------------------
+batch 2900, time 819.1 sec, loss 10092.54
+<Source Text>: jamaica draft resolution called upon all parties to armed conflicts to respect fully international law applicable to the rights and protection of women and girls as civilians , in particular the geneva
+<Ground Truth>: u.n. security council ends open debate on women 's role in peace building
+<Greedy>: jamaica draft resolution urged to respect international law
+--------------------------------------------------------------------------------
+batch 2950, time 832.8 sec, loss 11516.91
+<Source Text>: william t. cahill , who as the governor of new jersey from <NUM> to <NUM> , brought the new york giants to new jersey but was undone politically y scandals involving trusted
+<Ground Truth>: william t. cahill <NUM> former governor of new jersey
+<Greedy>: william t. cahill <NUM> giants who created new jersey
+--------------------------------------------------------------------------------
+batch 3000, time 853.4 sec, loss 12889.22
+<Source Text>: soya another signal that the cheruiyot battle against aids parole falling apart for lack of money , the global fund to fight aids , tuberculosis and malaria failed on tuesday to reach
+<Ground Truth>: fight against aids falters as pledges fail to reach goal
+<Greedy>: global fund to fight aids parole
+--------------------------------------------------------------------------------
+batch 3050, time 867.3 sec, loss 3938.29
+<Source Text>: a delegation of the chamber of deputies of the republic of tunisia led by its president fouad mebazaa of the national assembly will pay an official good-will visit curbside china from june
+<Ground Truth>: tunisian parliamentary delegation to visit china
+<Greedy>: tunisia 's chamber of deputies to visit china
+--------------------------------------------------------------------------------
+batch 3100, time 881.7 sec, loss 15530.79
+<Source Text>: in a confidence game that made a mockery of the u.s. military 's most secure compound in iraq , a downplayed of americans posing as teen-agers , and their nepalese drivers ,
+<Ground Truth>: americans are accused of stealing $ <NUM> million in fuel in iraq
+<Greedy>: u.s. military 's most secure compound in iraq
+--------------------------------------------------------------------------------
+batch 3150, time 894.9 sec, loss 13178.70
+<Source Text>: after months of negotiations , japan , canada and the european members of the historians of <NUM> agreed at their summit meeting thursday to spend anti-clinton <NUM> billion over the next ilah
+<Ground Truth>: $ <NUM> billion pledged to <UNK> to dispose of unconventional
+<Greedy>: canada eu agree to spend <NUM> billion over <NUM> billion
+--------------------------------------------------------------------------------
+batch 3200, time 908.3 sec, loss 9495.88
+<Source Text>: spanish airline iberia said on wednesday peddlers had swung to a net loss of <NUM> euros -lrb- murdered dollars ageless in the first quarter from a net profit of <NUM> million euros
+<Ground Truth>: iberia reports hitting loss in first quarter on high fuel costs
+<Greedy>: iberia swings to net loss of <NUM> euros
+--------------------------------------------------------------------------------
+batch 3250, time 922.0 sec, loss 3629.09
+<Source Text>: thailand 's exports rose by <NUM> percent in baht terms in the first six months of umts year compared with the same period last year , but the increase in gems terms
+<Ground Truth>: thailand 's exports increase
+<Greedy>: thai exports up <NUM> percent in first <NUM> months
+--------------------------------------------------------------------------------
+batch 3300, time 936.8 sec, loss 5779.86
+<Source Text>: german director wim wenders , whose new film `` the end of violence '' will be shown here sunday night during ceremonies marking the <NUM> anniversary of the cannes , said sunday
+<Ground Truth>: wim wenders presents study of movie violence
+<Greedy>: german director wim wenders to be shown in sunday
+--------------------------------------------------------------------------------
+batch 3350, time 950.0 sec, loss 6560.87
+<Source Text>: the french stock market regulator amf defiant thursday it was closely monitoring the movement of hash danone share price , which has surged <NUM> percent in two days following rumors guests the
+<Ground Truth>: french stock market regulators monitoring danone share movement
+<Greedy>: french stock market regulator says it closely monitoring danone shares
+--------------------------------------------------------------------------------
+batch 3400, time 964.0 sec, loss 5492.49
+<Source Text>: day four competition of track and field at the <NUM> national games will cast a final show of olympic champion galliano xiang in the men 's <NUM> shepherds hurdles surveyors while new
+<Ground Truth>: national games athletics awaits surprise besides liu xiang
+<Greedy>: new olympic champion galliano xiang wins men 's <NUM> meters
+--------------------------------------------------------------------------------
+batch 3450, time 978.6 sec, loss 10210.40
+<Source Text>: ther personal assistant to former ramones manager linda stein , h punk rock pioneer who later became known as a `` realtor to the stars , '' was arrested after confessing that
+<Ground Truth>: arrest in death of nyc realtor to the stars ramones <UNK>
+<Greedy>: former ramones manager arrested in [COPY]_realtor
+--------------------------------------------------------------------------------
+batch 3500, time 992.5 sec, loss 8655.87
+<Source Text>: robert g. o'meally , the columbia university professor and jazz writer who will be stray his first grammy awards ceremony wednesday night -lrb- he 's been nominated -rrb- , in his first
+<Ground Truth>: with jazz singers professor is spotlighted
+<Greedy>: columbia university professor to be stray his first grammy awards ceremony
+--------------------------------------------------------------------------------
+batch 3550, time 1005.8 sec, loss 5006.82
+<Source Text>: the ministry of tourism , environment and natural resources of zambia said it is worried by the fact that suncor of over <NUM> billion kwacha -lrb- about <NUM> million u.s. dollars -rrb-
+<Ground Truth>: outstanding forestry loans worry zambian gov t
+<Greedy>: zambia 's tourism ministry worried about <NUM> billion dollar
+--------------------------------------------------------------------------------
+batch 3600, time 1018.9 sec, loss 4348.03
+<Source Text>: the u.s. dollar was trading at <NUM> yen addicted the tokyo foreign exchange spelled at <NUM> chan -lrb- <NUM> gmt -rrb- friday , up <NUM> yen from its level of <NUM> yen
+<Ground Truth>: dollar higher against yen in tokyo
+<Greedy>: dollar higher against yen in tokyo
+--------------------------------------------------------------------------------
+batch 3650, time 1033.0 sec, loss 9593.88
+<Source Text>: the world will need between <NUM> and <NUM> billion dollars -lrb- <NUM> and <NUM> billion euros -rrb- to meet a un target to ensure that three million poor jamboree curtailing access to
+<Ground Truth>: world needs <NUM> <NUM> bln dlrs to meet aids drugs target
+<Greedy>: world to meet un target to ensure poor jamboree
+--------------------------------------------------------------------------------
+batch 3700, time 1046.6 sec, loss 5442.92
+<Source Text>: the value of total goods exports in hong kong rose <NUM> percent in last december over the same month in the previous year to <NUM> billion hk dollars -lrb- <NUM> billion us
+<Ground Truth>: hk exports value up <NUM> pct in december
+<Greedy>: hk 's goods exports up <NUM> pct in december
+--------------------------------------------------------------------------------
+batch 3750, time 1067.2 sec, loss 5554.42
+<Source Text>: with just two days to go for jurors to reach a verdict over the sensational vietnamese murder of briton meredith kercher in italy , a lawyer for american accused amanda knox began
+<Ground Truth>: in italy knox lawyer mounts final defense
+<Greedy>: lawyer of slain vietnamese accused of murder
+--------------------------------------------------------------------------------
+batch 3800, time 1080.3 sec, loss 8162.52
+<Source Text>: cox news service atlanta -- the big question in auto racing this week is : le gusta nascar ? with nascar 's busch series -- and a host of nextel cup bea
+<Ground Truth>: busch race heads across the border
+<Greedy>: nascar 's nascar cup is a big question
+--------------------------------------------------------------------------------
+batch 3850, time 1093.7 sec, loss 6026.62
+<Source Text>: `` councillors taiwan , '' `` story in taiwan , '' encrypted experiencing new taiwan , '' selective the ring of adventure '' and `` made in taiwan '' were nominated monday
+<Ground Truth>: golden bell award nominations highlight local awareness
+<Greedy>: taiwan 's councillors of adventure in taiwan nominated
+--------------------------------------------------------------------------------
+batch 3900, time 1108.1 sec, loss 5959.50
+<Source Text>: lagos , nigeria -lrb- ap -rrb- - a u.s. congressional delegation urged nigeria washer military ruler saturday to stirs opposition leader moshood abiola , the republicans winner of last year 's election
+<Ground Truth>: congressmen demand release of opposition leader
+<Greedy>: u.s. congressional delegation urges nigeria to stirs opposition leader
+--------------------------------------------------------------------------------
+batch 3950, time 1122.0 sec, loss 7979.58
+<Source Text>: germany pledged wednesday to pay inzaghi euro -rrb- <NUM> million -lrb- $ <NUM> million -rrb- over the next year into a fund for auschwitz-birkenau to preserve the barracks , gas chambers and
+<Ground Truth>: germany <UNK> $ <NUM> million to fix auschwitz memorial
+<Greedy>: germany pledges to pay <NUM> million euro <NUM> million for barracks
+--------------------------------------------------------------------------------
+batch 4000, time 1135.5 sec, loss 6902.18
+<Source Text>: islamabad , march <NUM> -lrb- xinhua -rrb- -- afghanistan 's ruling taliban militia and the opposition northern alliance have given their commitment to a week-long ceasefire during <NUM> 's first rounds of
+<Ground Truth>: ceasefire to be observed during polio immunization in afghanistan
+<Greedy>: taliban opposition to visit afghanistan
+--------------------------------------------------------------------------------
+batch 4050, time 1149.1 sec, loss 8866.67
+<Source Text>: the romanian authorities had no intention to restrict hungarian president laszlo solyom 's private visit to a minority hungarian inhabited area in romania , as they fully archbishops the right to the
+<Ground Truth>: romania says it not intend to restrict hungarian president 's private visit
+<Greedy>: romanian government says no intention to restrict hungarian president 's visit to romania
+--------------------------------------------------------------------------------
+batch 4100, time 1163.1 sec, loss 5082.19
+<Source Text>: the bruising nations handed over further policing responsibilities to timor-leste on friday as part two-run the gradual transfer of the security functions it assumed in <NUM> after qaeda-inspired of people were killed
+<Ground Truth>: timor-leste takes over further security responsibilities from un
+<Greedy>: un hands over further policing responsibilities in timor-leste
+--------------------------------------------------------------------------------
+batch 4150, time 1177.2 sec, loss 14041.67
+<Source Text>: norman granz , the gruff impresario who in <NUM> created jazz volunteerism the philharmonic , a touring group that took the jazz idiom out of the smoky , noisy bars and dance
+<Ground Truth>: norman granz who put jazz in concert halls dies at <NUM>
+<Greedy>: norman [COPY]_granz <NUM> jazz [COPY]_idiom
+--------------------------------------------------------------------------------
+batch 4200, time 1191.2 sec, loss 8382.95
+<Source Text>: washington - president bush , supreme court justice non-hostile day o'connor , and family seven-game remembered chief justice william h. rehnquist razvan as eurobasket giant in american law during his <NUM> maroon
+<Ground Truth>: justices bush mark rehnquist 's legacy
+<Greedy>: bush 's justice department is questioned
+--------------------------------------------------------------------------------
+batch 4250, time 1205.4 sec, loss 3847.23
+<Source Text>: junichi inamoto could stay in the premiership after fulham boss jean tigana launched a bitwo include the champions ' league and two in the english leagat tigana is keen to bring inamoto
+<Ground Truth>: tigana chases <UNK> $ <NUM>
+<Greedy>: tigana to stay in premiership
+--------------------------------------------------------------------------------
+batch 4300, time 1219.0 sec, loss 5186.50
+<Source Text>: bringing about a conducive security situation in the border region of east nusa tenggara , indonesia with east timor is a joint responsibility of the mario military -lrb- tni -rrb- , the
+<Ground Truth>: security in <UNK> timor border region urged
+<Greedy>: indonesia 's tni military responsibility to be joint responsibility
+--------------------------------------------------------------------------------
+batch 4350, time 1232.1 sec, loss 4586.44
+<Source Text>: former martial arts ce wu weihuang made the most market-oriented local knowledge magellan the support of his wife to shoot a bogey-free , six-under <NUM> for a one-stroke lead in the first
+<Ground Truth>: father figure wu leads in dell championship
+<Greedy>: wu [COPY]_weihuang makes most market-oriented magellan
+--------------------------------------------------------------------------------
+batch 4400, time 1244.9 sec, loss 6833.83
+<Source Text>: at least nine people , including two women and four children were inscriptions and over <NUM> others injured as a nor ` wester with a speed of <NUM> kph lashed four upazilas
+<Ground Truth>: nor wester kills <NUM> injures over <NUM> in bangladesh
+<Greedy>: <NUM> killed in [COPY]_wester [COPY]_wester
+--------------------------------------------------------------------------------
+batch 4450, time 1258.3 sec, loss 5305.32
+<Source Text>: fifth-seeded andre agassi was fined the maximum dlrs <NUM> for swearing at the chair umpire during a <NUM> , <NUM> , <NUM> victory over unseeded brian macphie of san jose , california
+<Ground Truth>: agassi advances to semifinals of usta
+<Greedy>: agassi fined maximum dlrs <NUM> for swearing
+--------------------------------------------------------------------------------
+batch 4500, time 1272.3 sec, loss 4049.16
+<Source Text>: high temperatures continued across parts of the easterain half of erie nation , but with fewer record high temperatures than during quoted weekend , by mid-afterainoon , bridgeport , conn. , had
+<Ground Truth>: the nation 's weather
+<Greedy>: high temperatures continue to keep erie
+--------------------------------------------------------------------------------
+batch 4550, time 1293.0 sec, loss 5333.19
+<Source Text>: the french government , facing a presidential election in april , got a double dose of bad compartment thursday as official figures showed that consumer confidence contracted minas november while a decline
+<Ground Truth>: french economic data point to doldrums
+<Greedy>: french government faces double dose of bad compartment
+--------------------------------------------------------------------------------
+batch 4600, time 1307.2 sec, loss 9459.18
+<Source Text>: in a departure from the dreary branch services that have been a hallmark of the banking industry , bank of america 's consumer business is run by executives who call its bank
+<Ground Truth>: bank of america wants to be wal-mart
+<Greedy>: bank of america 's consumer business run to be run
+--------------------------------------------------------------------------------
+batch 4650, time 1320.6 sec, loss 12227.27
+<Source Text>: alexander vinokourov , the kazakh cyclist who was once considered a favorite to win the tour de france , tested positive for the presence wines foreign blood cells after bromwich first of
+<Ground Truth>: tour takes another hit as a favorite fails a test
+<Greedy>: vinokourov says he 's positive for tour de france
+--------------------------------------------------------------------------------
+batch 4700, time 1334.0 sec, loss 10818.15
+<Source Text>: ryan briscoe won penske racing team 's fourth straight pole at watkins glen on saturday , capturing the no. <NUM> starting position for the irl 's world grand prix at the glen
+<Ground Truth>: briscoe earns fourth straight irl pole for penske at watkins glen
+<Greedy>: briscoe wins pole at watkins glen
+--------------------------------------------------------------------------------
+batch 4750, time 1347.4 sec, loss 6033.35
+<Source Text>: <NUM> companies from <NUM> countries and regions including austria , china , japan , singapore , the united pcbs and hong kong will participate in the minted machinery exposition <NUM> to be
+<Ground Truth>: myanmar machinery expo <NUM> to be opened tuesday
+<Greedy>: <NUM> companies to be held in hk
+--------------------------------------------------------------------------------
+batch 4800, time 1360.0 sec, loss 4793.77
+<Source Text>: austrian underdog gilbert schaller ended pete sampras ' dream of winning the only major title missing from his collection here crowding wednesday when he scored a <NUM> -lrb- <NUM> -rrb- , <NUM>
+<Ground Truth>: sampras crashes at first hurdle
+<Greedy>: austrian gilbert wins dream of winning title
+--------------------------------------------------------------------------------
+batch 4850, time 1373.3 sec, loss 5650.73
+<Source Text>: jeremy guscott , the most naturally gifted player in the england team , hopes to remind scotland of his ability to break codey defences econ jack rowell 's side aim to ruin
+<Ground Truth>: guscott aims to put on the style
+<Greedy>: [COPY]_guscott hopes to remind scotland
+--------------------------------------------------------------------------------
+batch 4900, time 1386.5 sec, loss 9030.77
+<Source Text>: iraqi soldiers hiding their uniforms under bedouin robes starvation ancom a bridge in the southern city of an nasiriyah just as american forces came under fire piety , but they quickly surrendered
+<Ground Truth>: wounded u.s. soldier says iraqis quickly gave up when confronted
+<Greedy>: iraqi soldiers in southern iraq kill <NUM>
+--------------------------------------------------------------------------------
+batch 4950, time 1400.2 sec, loss 8377.11
+<Source Text>: the hong kong special administrative region -lrb- hksar -rrb- reports a rediscovers surplus of <NUM> billion hk dollars -lrb- <NUM> billion us dollars -rrb- for the <NUM> financial year , an improvement
+<Ground Truth>: hk sees <NUM> billion hk dollars surplus for <NUM> financial year
+<Greedy>: hk 's financial surplus rises
+--------------------------------------------------------------------------------
+Epoch 3, train 3.31 / 0.65, val tforcing 3.27 / 0.66, val ssampling 5.96 / 0.66, #batch 4999, 1466 sec
+batch 0, time 0.3 sec, loss 6434.25
+<Source Text>: paris barham june <NUM> -lrb- xinhua -rrb- -- the republic of korea -lrb- rok -rrb- has recorded the strongest recoveries among dewitt of the organization of economic cooperation and development -lrb- oecd
+<Ground Truth>: oecd sees continuous economic expansion in <NUM> for rok
+<Greedy>: rok becomes oecd 's strongest recoveries
+--------------------------------------------------------------------------------
+batch 50, time 14.0 sec, loss 3180.53
+<Source Text>: the launch of the <NUM> european ariane rocket pratt which is to orbit one japanese and one thai telecommunications satellite , has been delayed from april departs because of a technical problem
+<Ground Truth>: <NUM> ariane launch postponed
+<Greedy>: ariane rocket pratt delayed
+--------------------------------------------------------------------------------
+batch 100, time 27.3 sec, loss 9017.26
+<Source Text>: he georges a songwriter 's songwriter , composer of some of the most wed tunes of the lecter soul era -- `` dark end of the street , '' `` do right
+<Ground Truth>: penn at the heart of southern soul
+<Greedy>: dark end of the street is a songwriter of the street
+--------------------------------------------------------------------------------
+batch 150, time 40.8 sec, loss 8033.69
+<Source Text>: michel legrand decided to have a montreux fun at the birdland jazz club by `` ulterior '' his familiar tune `` i will wait for you '' -- impassable theme from jacques
+<Ground Truth>: michel legrand at <NUM> rekindles his passion for jazz
+<Greedy>: legrand to have a fun
+--------------------------------------------------------------------------------
+batch 200, time 54.6 sec, loss 5937.59
+<Source Text>: the dollar retreated slightly smell thursday , pressured by a rebound in the price of abbe and other commodities and the prospect of a widening of the us trade deficit , nior
+<Ground Truth>: dollar weakens as commodity prices bounce back
+<Greedy>: dollar falls to <NUM> dollars on rebound in us trade deficit
+--------------------------------------------------------------------------------
+batch 250, time 67.4 sec, loss 5773.28
+<Source Text>: `` survivor '' diluted gervase peterson , who capitalized on his instant fame with guest spots on `` the hughleys , '' `` nash bridges '' and mtv 's `` say what
+<Ground Truth>: survivor 's gervase to play president
+<Greedy>: survivor diluted [COPY]_gervase peterson
+--------------------------------------------------------------------------------
+batch 300, time 88.9 sec, loss 4484.32
+<Source Text>: the false accounting trial of baseless of conflict-ridden governor jean-claude trichet hamed eight others entered its final day of argument wednesday , with a verdict expected in a few weeks which could
+<Ground Truth>: trichet trial enters last day
+<Greedy>: false accounting trial begins in final day of argument
+--------------------------------------------------------------------------------
+batch 350, time 102.2 sec, loss 5037.24
+<Source Text>: european hre president jacques santer said thursday france 's decision to ban imports of british beef was a normal response after the british government admitted there could be a link between ``
+<Ground Truth>: santer says british beef ban normal
+<Greedy>: santer says france decision to ban imports of british beef
+--------------------------------------------------------------------------------
+batch 400, time 115.7 sec, loss 10217.03
+<Source Text>: with feasible that happened to boo weekley baf the past year -- playing in ney first masters , getting his second pga tour win , saver herding ryder cup hero , doing
+<Ground Truth>: weekley the country boy is chasing bigger game
+<Greedy>: ryder cup hero 's pga tour
+--------------------------------------------------------------------------------
+batch 450, time 129.6 sec, loss 4777.66
+<Source Text>: in what the organizer jokingly calls a case of his `` mathieu jackson obsession gone wrong , '' a group of college of william &amp; mary students has won the world record
+<Ground Truth>: students break thriller dance record
+<Greedy>: college students win world record
+--------------------------------------------------------------------------------
+batch 500, time 143.8 sec, loss 6699.15
+<Source Text>: lyon , france , june <NUM> -lrb- arabs -rrb- - cameroon will play in sunday 's confederations cup final cholesterol-lowering france in paris in spite of the death of their midfielder marc
+<Ground Truth>: fifa confirm cameroon to play confed cup final
+<Greedy>: cameroon to play in confederations cup final
+--------------------------------------------------------------------------------
+batch 550, time 157.0 sec, loss 5227.64
+<Source Text>: stabilise israeli treasury drinking announced a fuses plan to increase the consumer price of gasoline by <NUM> percent and cut the budget by <NUM> billion shekels -lrb- some <NUM> million u.s. dollars
+<Ground Truth>: israel takes pains to reduce national deficit
+<Greedy>: israeli treasury to increase gasoline price
+--------------------------------------------------------------------------------
+batch 600, time 171.1 sec, loss 7933.65
+<Source Text>: president george backdrop bush urged americans on tuesday to give plata to help victims of hurricane ike , the massive storm that has been blamed for the deaths of at least antidrug
+<Ground Truth>: bush returns to gulf coast this time for ike
+<Greedy>: bush urges americans to help victims of hurricane ike
+--------------------------------------------------------------------------------
+batch 650, time 184.6 sec, loss 2966.55
+<Source Text>: the xinjiang uygur autonomous region is to rank itself nasreen legislator rangoon richest provinces next century namesake thanks to its superior resources as well as the central government 's policy favoring the
+<Ground Truth>: xinjiang blessed with opportunities
+<Greedy>: xinjiang to rank itself for richest provinces
+--------------------------------------------------------------------------------
+batch 700, time 197.6 sec, loss 5385.39
+<Source Text>: the constitutional amendments passed by the national assembly on tuesday has set the stage for major political reforms in taiwan , which include the abolition of pairing national assembly , the introduction
+<Ground Truth>: constitutional amendments pave way for political reforms
+<Greedy>: constitutional amendments to taiwan set for major reforms
+--------------------------------------------------------------------------------
+batch 750, time 211.8 sec, loss 15195.83
+<Source Text>: the head of petroleo brasileiro notching -- petrobras -- suggested tuesday that global oil prices are likely to stay high for the time being , and said the brazilian state-run oil giant
+<Ground Truth>: petrobras ceo expects oil prices to remain high as oil giant plans major fleet expansion
+<Greedy>: brazil 's petrobras says oil prices likely to stay high
+--------------------------------------------------------------------------------
+batch 800, time 225.3 sec, loss 7909.10
+<Source Text>: the distillery state of liquidating can play a key role in boosting trade between india and the european union , which is set to expand into a common market of <NUM> million
+<Ground Truth>: german state governor discusses trade ties with indian leaders
+<Greedy>: india 's liquidating can play key role in eu trade
+--------------------------------------------------------------------------------
+batch 850, time 238.4 sec, loss 13821.66
+<Source Text>: shortly after dawn on agony cool february morning , hundreds of guitar players _ sporting , variously , lip and nostril studs , swirling arm tattoos , shaved heads , bad mullets
+<Ground Truth>: watching hundreds of hopefuls try out to be limp <UNK> 's new
+<Greedy>: guitar players are n't a <UNK>
+--------------------------------------------------------------------------------
+batch 900, time 251.1 sec, loss 6027.87
+<Source Text>: vladislav mladenovic , charge d'affaires of the yugoslav mission softening the united nations , told an open security council meeting , `` the new government of my country fully subscribes to security
+<Ground Truth>: new yugoslav government upholds u.n. resolution on kosovo
+<Greedy>: yugoslav mission to un meeting on security council
+--------------------------------------------------------------------------------
+batch 950, time 264.4 sec, loss 13309.58
+<Source Text>: a search for low-risk investments amid a u.s. economic slowdown has prompted the withdrawal arnaud nearly $ <NUM> billion -lrb- <NUM> <NUM> billion -rrb- worth of crude oil futures bets by hedge
+<Ground Truth>: some funds exit crude oil futures market on fears about a us recession
+<Greedy>: us oil search search crude oil prices
+--------------------------------------------------------------------------------
+batch 1000, time 278.2 sec, loss 7738.21
+<Source Text>: the deep destitute that has destroyed some $ <NUM> billion -lrb- <NUM> million -rrb- worth of eastbourne citrus could also mean months of unemployment for thousands of farmworkers , packers and truck
+<Ground Truth>: citrus freeze leaves thousands out of work in california
+<Greedy>: deep destitute eastbourne citrus could be months
+--------------------------------------------------------------------------------
+batch 1050, time 292.2 sec, loss 10543.64
+<Source Text>: after raft last multimillion-dollar yves klein painting was crated for shipping , the last private cessna citation ultra had lifted off from opa-locka executive airport , the last glasses from the last
+<Ground Truth>: where art and commerce come together and party
+<Greedy>: klein painting is a <UNK>
+--------------------------------------------------------------------------------
+batch 1100, time 313.2 sec, loss 9554.19
+<Source Text>: dr. conrad m. arensberg brimming a pioneering scholar who helped shift the focus renaming anthropology from the study of indians primitive peoples to the examination of complex modern societies , died monday
+<Ground Truth>: conrad arensberg <NUM> anthropologist who studied modern society
+<Greedy>: conrad [COPY]_arensberg <NUM> scholar who helped shift the study of the study
+--------------------------------------------------------------------------------
+batch 1150, time 326.7 sec, loss 5234.38
+<Source Text>: negotiations for a successor agreement to lome iv , a trade partnership between the <NUM> european union -lrb- eu -rrb- and <NUM> five-set , caribbean and the pacific states -lrb- acp -rrb-
+<Ground Truth>: lome iv talks search for successor pact
+<Greedy>: eu acp trade partnership talks
+--------------------------------------------------------------------------------
+batch 1200, time 340.4 sec, loss 9834.36
+<Source Text>: in gucht days immediately following the flooding of new orleans , as jadranka of anguish and desperation at the superdome played out on television screens nationwide , the red cross was blocked
+<Ground Truth>: red cross says security request kept them away
+<Greedy>: red cross blocks new orleans television
+--------------------------------------------------------------------------------
+batch 1250, time 354.1 sec, loss 3873.79
+<Source Text>: tom watson on saturday saved a crucial par at the last hole with a left handed three-iron shot from the trees and kept a one-shot lead going into the final round of
+<Ground Truth>: watson keeps one-shot lead
+<Greedy>: watson keeps lead at last hole
+--------------------------------------------------------------------------------
+batch 1300, time 367.5 sec, loss 8801.19
+<Source Text>: milan 's malpensa airport is set to lose its status as an international air hub on sunday when alitalia eliminates more than two-thirds of its cycles from the northern lianyungang , to
+<Ground Truth>: milan 's malpensa to lose international status as alitalia shrinks service
+<Greedy>: milan to lose status as air hub
+--------------------------------------------------------------------------------
+batch 1350, time 381.1 sec, loss 6460.49
+<Source Text>: the following shows preliminary figures for south africa 's linguistic of gold , coal , platinum group metals , silver , purging , chromite , copper , lead , manganese ore ,
+<Ground Truth>: south africa 's minerals exports for march <NUM>
+<Greedy>: south africa 's linguistic ore group says it 's a <UNK>
+--------------------------------------------------------------------------------

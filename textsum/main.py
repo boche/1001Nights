@@ -10,6 +10,7 @@ from util import *
 import torch
 from model.Seq2Seq import Seq2Seq
 from rouge import Rouge
+from subprocess import call
 
 def train(data):
     nbatch = len(data)
@@ -155,6 +156,13 @@ def test(model_path, testset):
             s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]),
                 f1_prec_recl.items())))
             print("%s: %s" % (metric, s))
+        sys.stdout.flush()
+
+        # get meteor score
+        f_hyps, f_refs = open('meteor/test.hyps', 'w'), open('meteor/test.refs', 'w')
+        f_hyps.write("\n".join(hyps[approach]))
+        f_refs.write("\n".join(refs[approach]))
+        call("java -Xmx2G -jar meteor/meteor-1.5.jar test.hyps test.refs -l en -norm", shell=True)
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
@@ -188,7 +196,8 @@ if __name__ == "__main__":
     argparser.add_argument('--use_renorm', action='store_true', default = False, 
                             help = 're-normalize attention weights to spread across only oov words')
     argparser.add_argument('--renorm_method', type=str, choices=['div', 'softmax'], default='div')
-
+    argparser.add_argument('--use_data_aug', action='store_true', default = False)
+    argparser.add_argument('--noise_ratio', type=float, default=0.05)
     args = argparser.parse_args()
     check_args(args)
 

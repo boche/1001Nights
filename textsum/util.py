@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import torch
 from torch.autograd import Variable
@@ -143,7 +144,12 @@ def build_local_dict(inputs, targets, word2idx, args):
                     # if not using copy, replace oov with UNK
                     tempInp.append(word2idx[UNK])
             else:
-                tempInp.append(word)
+                if args.use_data_aug and random.random() <= args.noise_ratio and word > 1:
+                    noise = random.randint(4, args.vocab_size - 1)
+                    # print("word index was %d, now is %d" % (word, noise))
+                    tempInp.append(noise)
+                else:
+                    tempInp.append(word)
 
         for word in tgt:
             """

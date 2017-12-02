@@ -93,7 +93,7 @@ class DecoderRNN(nn.Module):
         attn_weights = attn_weights.squeeze(1) # b x seq_len
         if self.use_renorm:
             attn_weights, has_no_oov = self.renorm(attn_weights, inputs_raw, input_lens)
-            p_gen = torch.max(p_gen, has_no_oov)
+            # p_gen = torch.max(p_gen, has_no_oov)
             # print("p_gen after renorm: ", p_gen.cpu().data.numpy())
 
         # compute probability to generate from fix-sized vocabulary: p(gen) * P(w)
