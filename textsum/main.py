@@ -13,7 +13,8 @@ from rouge import Rouge
 
 def train(data):
     nbatch = len(data)
-    nval = nbatch // 50
+    # nval = nbatch // 50
+    nval = nbatch // 20
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     random.seed(15213)
     torch.cuda.manual_seed(15213)
@@ -31,7 +32,8 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
 
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        # for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
@@ -42,7 +44,7 @@ def train(data):
             sum_len += sum(target_lens) - len(target_lens)
             epoch_loss += loss.data[0]
             if args.use_copy:
-                epoch_p_gen += mask_generation_prob(p_gen, target_lens)
+                epoch_p_gen += mask_generation_prob(p_gen, target_lens).data[0]
 
             s2s_opt.zero_grad()
             loss.backward()
@@ -73,7 +75,7 @@ def train(data):
                     is_volatile = True)
             loss_tforcing += loss.data[0]
             if args.use_copy:
-                p_gen_tforcing += mask_generation_prob(p_gen, target_lens)
+                p_gen_tforcing += mask_generation_prob(p_gen, target_lens).data[0]
 
             # scheduled sampling
             loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
@@ -81,10 +83,10 @@ def train(data):
                     is_volatile = True)
             loss_ssampling += loss.data[0]
             if args.use_copy:
-                p_gen_ssampling += mask_generation_prob(p_gen, target_lens)
+                p_gen_ssampling += mask_generation_prob(p_gen, target_lens).data[0]
 
         print("Epoch %d, train %.2f / %.2f, val tforcing %.2f / %.2f, val ssampling %.2f / %.2f, #batch %d, %.0f sec"
-                % (ep + 1, train_loss, train_p_gen, loss_tforcing / sum_len,
+                % (ep + 1, train_loss, train_p_gen, (loss_tforcing + args.lambda_pgen * p_gen_tforcing) / sum_len,
                     p_gen_tforcing / sum_len, loss_ssampling / sum_len,
                     p_gen_ssampling / sum_len, batch_idx, time.time() - ts))
         model_fname = args.user_dir + args.model_fpat % (identifier, ep + 1)
@@ -116,7 +118,7 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word,
     print("<Source Text>: %s" % srcText)
     print("<Ground Truth>: %s" % truth)
     print("<%s>: %s\n%s" % (decode_approach, prediction, 80 * '-'))
-    return prediction, truth
+    return srcText, prediction, truth
 
 def test(model_path, testset):
     s2s = Seq2Seq(args)
@@ -131,17 +133,19 @@ def test(model_path, testset):
     random.shuffle(testset)
 
     hyps, refs = {'Greedy':[], 'Beam':[]}, {'Greedy':[], 'Beam':[]}
+    contents = {'Greedy':[], 'Beam': []}
 
     for _, headline, body in testset[:args.test_size]:
         inputs, targets, loc_word2idx, loc_idx2word = index_oov([body],
                 [headline], word2idx, args)
         input_lens, target_lens = [inputs.size(1)], [targets.size(1)]
 
-        prediction, truth = summarize(s2s, inputs, input_lens, targets,
+        srcText, prediction, truth = summarize(s2s, inputs, input_lens, targets,
                 target_lens, loc_idx2word, beam_search = False,
                 show_copy = False)
         hyps['Greedy'].append(prediction)
         refs['Greedy'].append(truth)
+        contents['Greedy'].append(srcText)
 
     rouge = Rouge()
     # for approach in ["Greedy", "Beam"]:
@@ -153,6 +157,13 @@ def test(model_path, testset):
             s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]),
                 f1_prec_recl.items())))
             print("%s: %s" % (metric, s))
+
+        hyp_abstractiveness = calc_abstrativeness(hyps[approach],
+                contents[approach])
+        ref_abstractiveness = calc_abstrativeness(refs[approach],
+                contents[approach])
+        print("%s abstractiveness: %.3f" % (approach, hyp_abstractiveness))
+        print("%s abstractiveness: %.3f" % ("ref", ref_abstractiveness))
 
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
@@ -174,6 +185,7 @@ if __name__ == "__main__":
     argparser.add_argument('--teach_ratio', type=float, default=1)
     argparser.add_argument('--l2', type=float, default=0.001)
     argparser.add_argument('--fix_pgen', type=float, default=-1) # negative means not activated
+    argparser.add_argument('--lambda_pgen', type=float, default=0)
     # argparser.add_argument('--max_norm', type=float, default=100.0)
 
     argparser.add_argument('--rnn_model', type=str, choices=['gru', 'lstm'], default='lstm')

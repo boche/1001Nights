@@ -12,6 +12,7 @@ class Seq2Seq(nn.Module):
         self.rnn_model = args.rnn_model
         self.use_copy = args.use_copy
         self.max_title_len = args.max_title_len
+        self.lambda_pgen = args.lambda_pgen
 
         if self.use_bidir:
             self.linear_hidden = nn.Linear(args.hidden_size * 2, args.hidden_size)
@@ -46,7 +47,9 @@ class Seq2Seq(nn.Module):
                 encoder_output, inputs.clone(), input_lens, oov_size,
                 force_scheduled_sampling)
         # decoder returns p if use_copy, otherwise logp
-        loss = mask_loss(p_logp, target_lens, targets, is_logp = not self.use_copy)
+        loss = mask_loss(p_logp, target_lens, targets, is_logp =
+                not self.use_copy) - self.lambda_pgen * mask_generation_prob(
+                        p_gen, target_lens)
         return loss, p_gen
 
     def summarize(self, inputs, input_lens, oov_size, beam_search, is_volatile):

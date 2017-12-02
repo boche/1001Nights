@@ -33,7 +33,7 @@ def mask_generation_prob(prob_list, target_lens):
     target_lens: list; note that target_len includes <SOS> and <EOS> for each sentence
     """
     prob_sum = 0
-    probs = torch.stack(prob_list).transpose(0, 1).data.cpu().numpy() # b x s
+    probs = torch.stack(prob_list).transpose(0, 1) # b x s
     for i, prob in enumerate(probs):
         prob_sum += prob[:target_lens[i] - 1].sum()
     return prob_sum
@@ -202,3 +202,12 @@ def vectorize(raw_data, word2idx, args):
         body = [word2idx.get(w, w if keepOOV else word2idx[UNK]) for w in body[:args.max_text_len]]
         data_vec.append((docid, headline, body))
     return data_vec
+
+def calc_abstrativeness(targets, inputs):
+    tot_len, new_word_len = 0, 0
+    for tgt, inp in zip(targets, inputs):
+        inp, tgt = inp.split(" "), tgt.split(" ")
+        word_set = set(inp)
+        tot_len += len(tgt)
+        new_word_len += len([x for x in tgt if x not in word_set])
+    return float(new_word_len) / tot_len
