@@ -119,7 +119,7 @@ def next_batch(batch_idx, data, word2idx, args):
     targets = [pad_seq(y, max(target_lens)) for y in targets]
     return inputs, targets, input_lens, target_lens
 
-def build_local_dict(inputs, targets, word2idx, args):
+def build_local_dict(inputs, targets, word2idx, args, is_train):
     """
     inputs: list of index-text hybrid sequence for body (Eg: [92, EMP, 2, 78])
     targets: same as above, but for headline.
@@ -144,8 +144,8 @@ def build_local_dict(inputs, targets, word2idx, args):
                     # if not using copy, replace oov with UNK
                     tempInp.append(word2idx[UNK])
             else:
-                if args.use_data_aug and random.random() <= args.noise_ratio and word > 1:
-                    noise = random.randint(4, args.vocab_size - 1)
+                if args.use_data_aug and is_train and random.random() <= args.noise_ratio and word > 1:
+                    noise = random.randint(SP_TOKEN_SIZE, args.vocab_size - 1)
                     # print("word index was %d, now is %d" % (word, noise))
                     tempInp.append(noise)
                 else:
@@ -166,10 +166,10 @@ def build_local_dict(inputs, targets, word2idx, args):
         tgts.append(tempTgt)
     return inps, tgts, loc_word2idx, loc_idx2word
 
-def index_oov(inputs, targets, word2idx, args):
+def index_oov(inputs, targets, word2idx, args, is_train=False):
     loc_word2idx, loc_idx2word = {}, {}
     inputs, targets, loc_word2idx, loc_idx2word = build_local_dict(inputs,
-            targets, word2idx, args)
+            targets, word2idx, args, is_train)
     inputs, targets = torch.LongTensor(inputs), torch.LongTensor(targets)
     if args.use_cuda:
         inputs, targets = inputs.cuda(), targets.cuda()

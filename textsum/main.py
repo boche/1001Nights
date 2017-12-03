@@ -14,8 +14,8 @@ from subprocess import call
 
 def train(data):
     nbatch = len(data)
-    # nval = nbatch // 20
-    nval = nbatch // 50
+    nval = nbatch // 20
+    # nval = nbatch // 50
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     random.seed(15213)
     torch.cuda.manual_seed(15213)
@@ -33,11 +33,11 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
 
-        # for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
+        # for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
-                    targets, word2idx, args)
+                    targets, word2idx, args, is_train=True)
             s2s.train(True)
             loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = False,
