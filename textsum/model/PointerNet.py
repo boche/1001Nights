@@ -7,6 +7,7 @@ class PointerNet(nn.Module):
         super(PointerNet, self).__init__()
         generator_input_size = args.emb_size + args.hidden_size * (
                 3 if args.use_bidir else 2)
+        generator_input_size += args.hidden_size if args.use_decoder_attn else 0
         self.generator = nn.Linear(generator_input_size, 1, bias=True)
 
     def forward(self, context, rnn_output, input_emb):

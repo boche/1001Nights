@@ -44,7 +44,7 @@ class Seq2Seq(nn.Module):
 
         p_logp, p_gen = self.decoder(targets.clone(), encoder_hidden,
                 encoder_output, inputs.clone(), input_lens, oov_size,
-                force_scheduled_sampling)
+                force_scheduled_sampling, target_lens)
         # decoder returns p if use_copy, otherwise logp
         loss = mask_loss(p_logp, target_lens, targets, is_logp = not self.use_copy)
         return loss, p_gen

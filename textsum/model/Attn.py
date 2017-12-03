@@ -38,3 +38,15 @@ class Attn(nn.Module):
                 attn_energies[b, 0, input_lens[b]:] = float("-inf")
         attn_energies = attn_energies.squeeze(1)
         return F.softmax(attn_energies).unsqueeze(1) # B x 1 x S
+
+    def decoder(self, hidden, decoder_outputs, target_lens):
+        # decoder_output: b x h x s
+        # hidden: B x 1 x H
+        batch_size, hidden_size, seq_len = decoder_outputs.size()
+        attn_energies = hidden.bmm(decoder_outputs) # b x 1 x s
+
+        for b in range(batch_size):
+            if target_lens[b] < seq_len:
+                attn_energies[b, 0, target_lens[b]:] = float("-inf")
+        attn_energies = attn_energies.squeeze(1)
+        return F.softmax(attn_energies).unsqueeze(1) # B x 1 x S

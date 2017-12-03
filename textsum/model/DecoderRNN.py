@@ -19,6 +19,7 @@ class DecoderRNN(nn.Module):
         self.use_copy = args.use_copy
         self.fix_pgen = args.fix_pgen
         self.use_separate_training = args.use_separate_training
+        self.use_decoder_attn = args.use_decoder_attn
 
         self.IDX_UNK = 2   # global index for <UNK>
         self.emb = emb
@@ -35,13 +36,18 @@ class DecoderRNN(nn.Module):
 
         if self.attn_model != 'none':
             concat_size = self.hidden_size * (3 if args.use_bidir else 2)
+            concat_size += self.hidden_size if self.use_decoder_attn else 0
             self.concat = nn.Linear(concat_size, self.hidden_size)
             self.attn = Attn(args)
             if self.use_copy and self.fix_pgen < 0:
                 self.ptr = PointerNet(args)
 
     def getAttnOutput(self, batch_input, last_output, h, encoder_output, inputs,
-            input_lens, oov_size):
+            input_lens, oov_size, decoder_output, target_lens):
+        """
+        encoder_output: b x max_input_size x h
+        decoder_output: b x h x s
+        """
         input_emb = self.emb(batch_input)
         # feed input
         concat_input = torch.cat([input_emb, last_output], 1).unsqueeze(1)
@@ -49,6 +55,13 @@ class DecoderRNN(nn.Module):
         rnn_output, h = self.rnn(concat_input, h)
         attn_weights = self.attn(rnn_output, encoder_output, input_lens) # b x 1 x s
         context = attn_weights.bmm(encoder_output)
+        
+        if self.use_decoder_attn:
+            decoder_attn_weights = self.attn.decoder(rnn_output, decoder_output,
+                    target_lens) # b x 1 x s
+            decoder_context = decoder_attn_weights.bmm(
+                    decoder_output.transpose(1,2)) # b x 1 x h
+            context = torch.cat((context, decoder_context), 2)
 
         # Final output layer (next word prediction) using the RNN hidden state
         # and context vector
@@ -113,11 +126,13 @@ class DecoderRNN(nn.Module):
         return last_output
 
     def forward(self, targets, h, encoder_output, inputs, input_lens, oov_size,
-            force_scheduled_sampling):
+            force_scheduled_sampling, target_lens):
         """
         targets: LongTensor, b x s
+        encoder_output: b x max_input_size x h
         """
         batch_size, max_seq_len = targets.size()
+
         batch_input = Variable(targets[:, 0]) #SOS, b
         batch_output, batch_p_gens = [], []
         use_teacher_forcing = random.random() < self.teach_ratio
@@ -126,14 +141,21 @@ class DecoderRNN(nn.Module):
         if self.attn_model != 'none':
             last_output = self.initLastOutput(batch_size)
 
+        # corresponds to SOS
+        decoder_output = Variable(torch.zeros(batch_size, self.hidden_size, 1)) 
+        decoder_output = decoder_output.cuda() if encoder_output.is_cuda else decoder_output
+
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
                 p_logp, h = self.getRNNOutput(batch_input, h)
             else:
                 p_logp, h, last_output, _, p_gen = self.getAttnOutput(
                         batch_input, last_output, h, encoder_output, inputs,
-                        input_lens, oov_size)
+                        input_lens, oov_size, decoder_output, target_lens)
                 batch_p_gens.append(p_gen)
+                if self.use_decoder_attn:
+                    decoder_output = torch.cat((decoder_output,
+                        last_output.unsqueeze(2)), dim = 2)
 
             batch_output.append(p_logp)
             if use_teacher_forcing:
@@ -153,9 +175,12 @@ class DecoderRNN(nn.Module):
         last_output = self.initLastOutput(batch_size)
         # here it's assuming SOS has index 0
         batch_input = Variable(torch.zeros(batch_size).long())
+        decoder_output = Variable(torch.zeros(batch_size, self.hidden_size, 1)) 
         if next(self.parameters()).data.is_cuda:
             batch_input = batch_input.cuda()
+            decoder_output = decoder_output.cuda()
         batch_attn, batch_p_gen, batch_symbol = [], [], [batch_input]
+        target_lens = [max_seq_len for _ in range(batch_size)]
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
@@ -163,9 +188,12 @@ class DecoderRNN(nn.Module):
             else:
                 p_logp, h, last_output, attn_weights, p_gen = self.getAttnOutput(
                         batch_input, last_output, h, encoder_output, inputs,
-                        input_lens, oov_size)
+                        input_lens, oov_size, decoder_output, target_lens)
                 batch_attn.append(attn_weights.squeeze(1))
                 batch_p_gen.append(p_gen)
+                if self.use_decoder_attn:
+                    decoder_output = torch.cat((decoder_output,
+                        last_output.unsqueeze(2)), dim = 2)
 
             _, batch_input = torch.max(p_logp, 1, keepdim=False)
             batch_symbol.append(batch_input.clone())

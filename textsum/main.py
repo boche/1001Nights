@@ -13,7 +13,8 @@ from rouge import Rouge
 
 def train(data):
     nbatch = len(data)
-    nval = nbatch // 50
+    # nval = nbatch // 50
+    nval = nbatch // 20
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     random.seed(15213)
     torch.cuda.manual_seed(15213)
@@ -31,7 +32,8 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
 
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        # for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
@@ -183,6 +185,7 @@ if __name__ == "__main__":
     argparser.add_argument('--use_copy', action='store_true', default = False)
     argparser.add_argument('--use_visualization', action='store_true', default = False)
     argparser.add_argument('--use_separate_training', action='store_true', default = False)
+    argparser.add_argument('--use_decoder_attn', action='store_true', default = False)
 
     args = argparser.parse_args()
     check_args(args)
