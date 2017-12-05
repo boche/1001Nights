@@ -36,7 +36,8 @@ class DecoderRNN(nn.Module):
         if self.attn_model != 'none':
             concat_size = self.hidden_size * (3 if args.use_bidir else 2)
             self.concat = nn.Linear(concat_size, self.hidden_size)
-            self.attn = Attn(args)
+            self.attn_gen = Attn(args)
+            self.attn_copy = Attn(args)
             if self.use_copy and self.fix_pgen < 0:
                 self.ptr = PointerNet(args)
 
@@ -47,22 +48,24 @@ class DecoderRNN(nn.Module):
         concat_input = torch.cat([input_emb, last_output], 1).unsqueeze(1)
 
         rnn_output, h = self.rnn(concat_input, h)
-        attn_weights = self.attn(rnn_output, encoder_output, input_lens) # b x 1 x s
-        context = attn_weights.bmm(encoder_output)
+        attn_weights_gen = self.attn_gen(rnn_output, encoder_output, input_lens) # b x 1 x s
+        attn_weights_copy = self.attn_copy(rnn_output, encoder_output, input_lens) # b x 1 x s
+        context_gen = attn_weights_gen.bmm(encoder_output)
+        context_copy = attn_weights_copy.bmm(encoder_output)
 
         # Final output layer (next word prediction) using the RNN hidden state
         # and context vector
-        concat_input = torch.cat((rnn_output, context), 2).squeeze(1)
+        concat_input = torch.cat((rnn_output, context_gen), 2).squeeze(1)
         concat_output = F.tanh(self.concat(concat_input))
         p_gen = None
 
         if self.use_copy:
             p_vocab = F.softmax(self.out_fc(concat_output))
-            p_logp, p_gen = self.getPointerOutput(p_vocab, context,
-                    attn_weights, input_emb, rnn_output, inputs, oov_size)
+            p_logp, p_gen = self.getPointerOutput(p_vocab, context_copy,
+                    attn_weights_copy, input_emb, rnn_output, inputs, oov_size)
         else:
             p_logp = F.log_softmax(self.out_fc(concat_output))
-        return p_logp, h, concat_output, attn_weights, p_gen
+        return p_logp, h, concat_output, attn_weights_gen, attn_weights_copy, p_gen
 
     def getPointerOutput(self, p_vocab, context, attn_weights, input_emb,
             rnn_output, inputs_raw, oov_size):
@@ -130,7 +133,7 @@ class DecoderRNN(nn.Module):
             if self.attn_model == 'none':
                 p_logp, h = self.getRNNOutput(batch_input, h)
             else:
-                p_logp, h, last_output, _, p_gen = self.getAttnOutput(
+                p_logp, h, last_output, _, __, p_gen = self.getAttnOutput(
                         batch_input, last_output, h, encoder_output, inputs,
                         input_lens, oov_size)
                 batch_p_gens.append(p_gen)
@@ -155,16 +158,18 @@ class DecoderRNN(nn.Module):
         batch_input = Variable(torch.zeros(batch_size).long())
         if next(self.parameters()).data.is_cuda:
             batch_input = batch_input.cuda()
-        batch_attn, batch_p_gen, batch_symbol = [], [], [batch_input]
+        batch_attn_gen, batch_attn_copy = [], []
+        batch_p_gen, batch_symbol = [], [batch_input]
 
         for t in range(1, max_seq_len):
             if self.attn_model == 'none':
                 p_logp, h = self.getRNNOutput(batch_input, h)
             else:
-                p_logp, h, last_output, attn_weights, p_gen = self.getAttnOutput(
-                        batch_input, last_output, h, encoder_output, inputs,
-                        input_lens, oov_size)
-                batch_attn.append(attn_weights.squeeze(1))
+                p_logp, h, last_output, attn_weights_gen, attn_weights_copy, \
+                        p_gen = self.getAttnOutput(batch_input, last_output,
+                        h, encoder_output, inputs, input_lens, oov_size)
+                batch_attn_gen.append(attn_weights_gen.squeeze(1))
+                batch_attn_copy.append(attn_weights_copy.squeeze(1))
                 batch_p_gen.append(p_gen)
 
             _, batch_input = torch.max(p_logp, 1, keepdim=False)
@@ -172,7 +177,7 @@ class DecoderRNN(nn.Module):
             if self.use_copy:
                 batch_input[batch_input >= self.vocab_size] = self.IDX_UNK
 
-        return batch_symbol, batch_attn, batch_p_gen
+        return batch_symbol, batch_attn_gen, batch_attn_copy, batch_p_gen
 
     def summarize_bs(self, h, max_seq_len, encoder_output, inputs, input_lens, 
             oov_size, beam_size=4):
@@ -180,14 +185,15 @@ class DecoderRNN(nn.Module):
         # candidates heap: key: last_logp 
         #   value: (last_word, prev_words, outputs, h, last_output, prev_attns, prev_p_gens)
         last_candidates = [(0.0 ,
-            (np.int64(0), [np.int64(0)], [0.0], h, last_output, [], []))]
+            (np.int64(0), [np.int64(0)], [0.0], h, last_output, [], [], []))]
         final_candidates = []
 
         current_depth = 0
         while last_candidates and current_depth < max_seq_len:
             current_depth += 1
             partial_candidates = []
-            for last_logp, (last_word, prev_words, outputs, h, last_output, prev_attns, prev_p_gens) in last_candidates:
+            for last_logp, (last_word, prev_words, outputs, h, last_output, prev_attns_gen, 
+                            prev_attns_copy, prev_p_gens) in last_candidates:
                 # print(last_logp, last_word, prev_words)
                 if last_word.item() == 1: #EOS
                     while len(final_candidates) >= beam_size and last_logp > final_candidates[0][0]:
@@ -203,11 +209,11 @@ class DecoderRNN(nn.Module):
                     inp = inp.cuda()
                 if self.attn_model == 'none':
                     logp, h = self.getRNNOutput(inp, h)
-                    attn_weights, p_gen = None, None
+                    attn_weights_gen, attn_weights_copy, p_gen = None, None, None
                 else:
-                    logp, h, last_output, attn_weights, p_gen = self.getAttnOutput(
-                            inp, last_output, h, encoder_output, inputs,
-                            input_lens, oov_size)
+                    logp, h, last_output, attn_weights_gen, attn_weights_copy, \
+                            p_gen = self.getAttnOutput(inp, last_output, h, 
+                            encoder_output, inputs, input_lens, oov_size)
                 res, ind = logp.topk(beam_size)
                 for i in range(ind.size(1)):
                     word = ind[0][i]
@@ -216,17 +222,18 @@ class DecoderRNN(nn.Module):
                         heapq.heappop(partial_candidates)
 
                     if len(partial_candidates) + 1 <= beam_size:
-                        heapq.heappush(partial_candidates, (current_logp,
-                            (word.data.numpy()[0], prev_words+[word.data.numpy()[0]], outputs+[current_logp], 
-                                h, last_output, prev_attns + [attn_weights], prev_p_gens + [p_gen])))
+                        heapq.heappush(partial_candidates, (current_logp, (word.data.numpy()[0], 
+                                prev_words+[word.data.numpy()[0]], outputs+[current_logp], h, last_output, 
+                                prev_attns_gen + [attn_weights_gen],  prev_attns_copy + [attn_weights_copy], 
+                                prev_p_gens + [p_gen])))
                     
             last_candidates = partial_candidates
 
         if final_candidates:
-            last_logp, result_sent, prev_attns, prev_p_gens = max(final_candidates)
+            last_logp, result_sent, prev_attns_gen, prev_attns_copy, prev_p_gens = max(final_candidates)
         else:
-            last_logp, (_, result_sent, outputs, _, _, prev_attns, prev_p_gens) = max(last_candidates)
+            last_logp, (_, result_sent, outputs, _, _, prev_attns_gen, prev_attns_copy, prev_p_gens) = max(last_candidates)
         symbol = []
         for result in result_sent:
             symbol.append(Variable(torch.Tensor.long(torch.zeros(1)).fill_(result.item())))
-        return symbol, prev_attns, prev_p_gens
+        return symbol, prev_attns_gen, prev_attns_copy, prev_p_gens

@@ -13,8 +13,8 @@ from rouge import Rouge
 
 def train(data):
     nbatch = len(data)
-    # nval = nbatch // 50
-    nval = nbatch // 20
+    nval = nbatch // 50
+    # nval = nbatch // 20
     identifier = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     random.seed(15213)
     torch.cuda.manual_seed(15213)
@@ -32,8 +32,8 @@ def train(data):
         random.shuffle(train_data)
         epoch_loss, epoch_p_gen, sum_len = 0, 0, 0
 
-        # for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
-        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
+        for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:5000]):
+        # for batch_idx, (inputs, targets, input_lens, target_lens) in enumerate(train_data[:1000]):
             # loc_word2idx, loc_idx2word: local oov indexing for a batch
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
@@ -94,8 +94,8 @@ def train(data):
 
 def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word,
         beam_search, show_copy):
-    list_symbols, attns, p_gens = s2s.summarize(inputs, input_lens,
-            len(loc_idx2word), beam_search, is_volatile = True)
+    list_symbols, attns_gen, attns_copy, p_gens = s2s.summarize(inputs, 
+            input_lens, len(loc_idx2word), beam_search, is_volatile = True)
     symbols = torch.stack(list_symbols).transpose(0, 1) # b x s
     decode_approach = 'Beam' if beam_search else 'Greedy'
 
@@ -103,7 +103,8 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word,
     use_visualization = beam_search is False and args.use_visualization and (
             args.attn_model != 'none')
     if use_visualization:
-        attns = torch.stack(attns).transpose(0, 1)[0,:,:] # 1 x target_s x input_s
+        attns_gen = torch.stack(attns_gen).transpose(0, 1)[0,:,:] # 1 x target_s x input_s
+        attns_copy = torch.stack(attns_copy).transpose(0, 1)[0,:,:] # 1 x target_s x input_s
         p_gens = torch.stack(p_gens)[:,0,:] if args.use_copy else [] # max_seq_len x 1 x 1
 
     # In train, we only show the first instance. In test, batch is of size 1.
@@ -113,7 +114,8 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word,
             keepSrc = not show_copy)
 
     if use_visualization:
-        visualize(srcText, prediction, truth, attns, p_gens, args)
+        visualize(srcText, prediction, truth, attns_gen, p_gens, args, 'gen')
+        visualize(srcText, prediction, truth, attns_copy, p_gens, args, 'copy')
 
     print("<Source Text>: %s" % srcText)
     print("<Ground Truth>: %s" % truth)
@@ -126,7 +128,6 @@ def test(model_path, testset):
     s2s = s2s.cpu()
     s2s.train(False)
     print(s2s)
-
     testset = vectorize(testset, word2idx, args)
     random.seed(15213)
     torch.cuda.manual_seed(15213)
@@ -151,8 +152,7 @@ def test(model_path, testset):
     # for approach in ["Greedy", "Beam"]:
     for approach in ["Greedy"]:
         print("Decode Approach: {}".format(approach))
-        avg_score = rouge.get_scores(hyps[approach],
-                refs[approach], avg=True)
+        avg_score = rouge.get_scores(hyps[approach], refs[approach], avg=True)
         for metric, f1_prec_recl in avg_score.items():
             s = ', '.join(list(map(lambda x: '(%s, %.4f)' % (x[0], x[1]),
                 f1_prec_recl.items())))

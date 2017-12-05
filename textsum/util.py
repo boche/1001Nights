@@ -38,7 +38,7 @@ def mask_generation_prob(prob_list, target_lens):
         prob_sum += prob[:target_lens[i] - 1].sum()
     return prob_sum
 
-def visualize(input_text, output_text, gold_text, attn, p_gen, args):
+def visualize(input_text, output_text, gold_text, attn, p_gen, args, attn_src):
     """
     attn: output_s x input_s
     """
@@ -53,7 +53,7 @@ def visualize(input_text, output_text, gold_text, attn, p_gen, args):
         ax_attn = plt.subplot(gs[:, :-1])
         cax_attn = ax_attn.matshow(attn, cmap='bone')
         fig.colorbar(cax_attn, ax=ax_attn, orientation='horizontal')
-        ax_attn.set_title('attention scores')
+        ax_attn.set_title('attention scores (%s)' % attn_src)
         ax_attn.set_xticklabels(input_words, rotation=90)
         ax_attn.set_yticklabels(output_words)
         ax_attn.xaxis.set_ticks_position('bottom')
