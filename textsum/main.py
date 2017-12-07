@@ -38,7 +38,7 @@ def train(data):
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
             # print('inputs: ', inputs)
-            input_mask = torch.zeros(args.batch_size, args.vocab_size + len(loc_word2idx)).scatter_(1, inputs.clone().cpu(), 1)
+            input_mask = torch.zeros(inputs.size()[0], args.vocab_size + len(loc_word2idx)).scatter_(1, inputs.cpu(), 1)
             input_mask[:, :SP_TOKEN_SIZE] = 0
             # print('input_mask: ', input_mask)
             s2s.train(True)
@@ -73,8 +73,10 @@ def train(data):
             inputs, targets, loc_word2idx, loc_idx2word = index_oov(inputs,
                     targets, word2idx, args)
             sum_len += sum(target_lens) - len(target_lens)
+            input_mask = torch.zeros(inputs.size()[0], args.vocab_size + len(loc_word2idx)).scatter_(1, inputs.cpu(), 1)
+            input_mask[:, :SP_TOKEN_SIZE] = 0
             # teacher forcing
-            loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
+            loss, p_gen = s2s(inputs, input_lens, input_mask, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = False,
                     is_volatile = True)
             loss_tforcing += loss.data[0]
@@ -82,7 +84,7 @@ def train(data):
                 p_gen_tforcing += mask_generation_prob(p_gen, target_lens).data[0]
 
             # scheduled sampling
-            loss, p_gen = s2s(inputs, input_lens, targets, target_lens,
+            loss, p_gen = s2s(inputs, input_lens, input_mask, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = True,
                     is_volatile = True)
             loss_ssampling += loss.data[0]
