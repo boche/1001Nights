@@ -25,14 +25,9 @@ def mask_loss(p_logp_list, target_lens, targets, input_mask, is_logp):
         p_logp = torch.gather(p_logp_list[i], 1, idx).view(-1)
         logp = p_logp if is_logp else torch.log(p_logp)
         loss += logp[target_lens > i + 1].sum()
-        print('logp loss: ', loss)
-        print('logp_list: ', p_logp_list[i])
         probability = torch.exp(p_logp_list[i]) if is_logp else p_logp_list[i]
-        print('probability: ', probability)
         abstractive = probability * Variable(input_mask.cuda() if p_logp_list[0].is_cuda else input_mask)
-        print('abstractive: ', abstractive)
-        loss += abstractive.sum()
-        print('new loss: ', loss)
+        loss -= abstractive.sum()
     return -loss
 
 def mask_generation_prob(prob_list, target_lens):
