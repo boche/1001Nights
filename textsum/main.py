@@ -114,8 +114,8 @@ def summarize(s2s, inputs, input_lens, targets, target_lens, loc_idx2word,
             keepSrc = not show_copy)
 
     if use_visualization:
-        visualize(srcText, prediction, truth, attns_gen, p_gens, args, 'gen')
-        visualize(srcText, prediction, truth, attns_copy, p_gens, args, 'copy')
+        visualize(srcText, prediction, truth, attns_gen, p_gens, args, 'GEN')
+        visualize(srcText, prediction, truth, attns_copy, p_gens, args, 'COPY')
 
     print("<Source Text>: %s" % srcText)
     print("<Ground Truth>: %s" % truth)
