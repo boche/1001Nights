@@ -42,7 +42,7 @@ def train(data):
             input_mask[:, :SP_TOKEN_SIZE] = 0
             # print('input_mask: ', input_mask)
             s2s.train(True)
-            loss, p_gen = s2s(inputs, input_lens, input_mask, args.lambda_abstractive, targets, target_lens,
+            loss, p_gen = s2s(inputs, input_lens, input_mask, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = False,
                     is_volatile = False)
             sum_len += sum(target_lens) - len(target_lens)
@@ -76,7 +76,7 @@ def train(data):
             input_mask = torch.zeros(inputs.size(0), args.vocab_size + len(loc_word2idx)).scatter_(1, inputs.cpu(), 1)
             input_mask[:, :SP_TOKEN_SIZE] = 0
             # teacher forcing
-            loss, p_gen = s2s(inputs, input_lens, input_mask, args.lambda_abstractive, targets, target_lens,
+            loss, p_gen = s2s(inputs, input_lens, input_mask, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = False,
                     is_volatile = True)
             loss_tforcing += loss.data[0]
@@ -84,7 +84,7 @@ def train(data):
                 p_gen_tforcing += mask_generation_prob(p_gen, target_lens).data[0]
 
             # scheduled sampling
-            loss, p_gen = s2s(inputs, input_lens, input_mask, args.lambda_abstractive, targets, target_lens,
+            loss, p_gen = s2s(inputs, input_lens, input_mask, targets, target_lens,
                     len(loc_word2idx), force_scheduled_sampling = True,
                     is_volatile = True)
             loss_ssampling += loss.data[0]
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     argparser.add_argument('--use_copy', action='store_true', default = False)
     argparser.add_argument('--use_visualization', action='store_true', default = False)
     argparser.add_argument('--use_separate_training', action='store_true', default = False)
-    argparser.add_argument('--lambda_abstractive', type=float, default=0)
+    argparser.add_argument('--labstract', type=float, default=0)
 
     args = argparser.parse_args()
     check_args(args)
