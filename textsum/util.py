@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def mask_loss(p_logp_list, target_lens, targets, input_mask, is_logp):
+def mask_loss(p_logp_list, target_lens, targets, input_mask, lambda_abstractive, is_logp):
     """
     p_logp_list: list of torch tensors, (seq_len - 1) x batch x vocab_size
     target_lens: list of target lens
@@ -25,9 +25,11 @@ def mask_loss(p_logp_list, target_lens, targets, input_mask, is_logp):
         p_logp = torch.gather(p_logp_list[i], 1, idx).view(-1)
         logp = p_logp if is_logp else torch.log(p_logp)
         loss += logp[target_lens > i + 1].sum()
+        print('logp loss: ', loss)
         probability = torch.exp(p_logp_list[i]) if is_logp else p_logp_list[i]
         abstractive = probability * Variable(input_mask.cuda() if p_logp_list[0].is_cuda else input_mask)
-        loss -= abstractive.sum()
+        loss -= lambda_abstractive * abstractive.sum()
+        print('abstractive loss:', loss)
     return -loss
 
 def mask_generation_prob(prob_list, target_lens):
