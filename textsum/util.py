@@ -83,8 +83,8 @@ def visualize(input_text, output_text, gold_text, attn, p_gen, args, attn_src):
         ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
     plt.tight_layout()
-    plt.savefig("%s/figure/dual_attn/%s_%s.png" % (args.user_dir, attn_src,
-        gold_text.replace(" ", "_").replace('/', '_')), dpi = 200)
+    plt.savefig("%s/figure/dual_attn/%s_%s.png" % (args.user_dir,
+        gold_text.replace(" ", "_").replace('/', '_')), attn_src, dpi = 200)
     plt.close()
 
 def pad_seq(seq, max_length):
