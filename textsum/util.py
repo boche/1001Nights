@@ -84,7 +84,7 @@ def visualize(input_text, output_text, gold_text, attn, p_gen, args, attn_src):
 
     plt.tight_layout()
     plt.savefig("%s/figure/dual_attn/%s_%s.png" % (args.user_dir,
-        gold_text.replace(" ", "_").replace('/', '_')), attn_src, dpi = 200)
+        gold_text.replace(" ", "_").replace('/', '_'), attn_src), dpi = 200)
     plt.close()
 
 def pad_seq(seq, max_length):
